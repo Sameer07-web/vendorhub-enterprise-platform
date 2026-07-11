@@ -1,12 +1,14 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, FileSearch, ShoppingCart, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, FileSearch, ShoppingCart, Settings, X, ClipboardCheck } from 'lucide-react';
+import { isManager, isAdmin } from '../../utils/permissions';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
     { label: 'Dashboard', path: '/', icon: LayoutDashboard },
     { label: 'Vendors', path: '/vendors', icon: Users },
     { label: 'Purchase Requests', path: '/purchase-requests', icon: FileText },
+    ...(isManager() || isAdmin() ? [{ label: 'Approvals', path: '/purchase-requests/approval', icon: ClipboardCheck }] : []),
     { label: 'RFQs', path: '/rfqs', icon: FileSearch },
     { label: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
     { label: 'Settings', path: '/settings', icon: Settings },

@@ -7,6 +7,11 @@ import VendorList from './features/vendors/pages/VendorList';
 import CreateVendor from './features/vendors/pages/CreateVendor';
 import EditVendor from './features/vendors/pages/EditVendor';
 import VendorDetails from './features/vendors/pages/VendorDetails';
+import PurchaseRequestList from './features/purchaseRequests/pages/PurchaseRequestList';
+import CreatePurchaseRequest from './features/purchaseRequests/pages/CreatePurchaseRequest';
+import EditPurchaseRequest from './features/purchaseRequests/pages/EditPurchaseRequest';
+import PurchaseRequestDetails from './features/purchaseRequests/pages/PurchaseRequestDetails';
+import ManagerApprovalQueue from './features/purchaseRequests/pages/ManagerApprovalQueue';
 
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
@@ -45,7 +50,12 @@ function App() {
           <Route path="vendors/:id" element={<VendorDetails />} />
           <Route path="vendors/:id/edit" element={<EditVendor />} />
           
-          <Route path="purchase-requests" element={<Placeholder title="Purchase Requests" />} />
+          <Route path="purchase-requests" element={<PurchaseRequestList />} />
+          <Route path="purchase-requests/new" element={<CreatePurchaseRequest />} />
+          <Route path="purchase-requests/approval" element={<ManagerApprovalQueue />} />
+          <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
+          <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
+          
           <Route path="rfqs" element={<Placeholder title="RFQs" />} />
           <Route path="purchase-orders" element={<Placeholder title="Purchase Orders" />} />
           <Route path="settings" element={<Placeholder title="Settings" />} />
