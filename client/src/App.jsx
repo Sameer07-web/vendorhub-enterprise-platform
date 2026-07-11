@@ -13,6 +13,11 @@ import EditPurchaseRequest from './features/purchaseRequests/pages/EditPurchaseR
 import PurchaseRequestDetails from './features/purchaseRequests/pages/PurchaseRequestDetails';
 import ManagerApprovalQueue from './features/purchaseRequests/pages/ManagerApprovalQueue';
 
+import RFQList from './features/rfq/pages/RFQList';
+import CreateRFQ from './features/rfq/pages/CreateRFQ';
+import EditRFQ from './features/rfq/pages/EditRFQ';
+import RFQDetails from './features/rfq/pages/RFQDetails';
+
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
   <div className="flex items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-lg bg-white">
@@ -56,7 +61,11 @@ function App() {
           <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
           <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
           
-          <Route path="rfqs" element={<Placeholder title="RFQs" />} />
+          <Route path="rfqs" element={<RFQList />} />
+          <Route path="rfqs/new" element={<CreateRFQ />} />
+          <Route path="rfqs/:id" element={<RFQDetails />} />
+          <Route path="rfqs/:id/edit" element={<EditRFQ />} />
+          
           <Route path="purchase-orders" element={<Placeholder title="Purchase Orders" />} />
           <Route path="settings" element={<Placeholder title="Settings" />} />
         </Route>

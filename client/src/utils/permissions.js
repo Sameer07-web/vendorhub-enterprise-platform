@@ -37,6 +37,31 @@ export const canDeletePurchaseRequest = () => {
   return isAdmin();
 };
 
+// RFQ
+export const canCreateRFQ = () => isManager() || isAdmin();
+
+export const canEditRFQ = (rfq) => {
+  if (!rfq) return false;
+  return (isManager() || isAdmin()) && rfq.status === 'DRAFT';
+};
+
+export const canSendRFQ = (rfq) => {
+  if (!rfq) return false;
+  return (isManager() || isAdmin()) && rfq.status === 'DRAFT';
+};
+
+export const canCloseRFQ = (rfq) => {
+  if (!rfq) return false;
+  return (isManager() || isAdmin()) && ['SENT', 'PARTIALLY_RESPONDED'].includes(rfq.status);
+};
+
+export const canCancelRFQ = (rfq) => {
+  if (!rfq) return false;
+  return (isManager() || isAdmin()) && rfq.status === 'DRAFT';
+};
+
+export const canDeleteRFQ = () => isAdmin();
+
 // Reusable generic permissions for future modules
 export const canCreate = () => true;
 export const canEdit = () => true;
