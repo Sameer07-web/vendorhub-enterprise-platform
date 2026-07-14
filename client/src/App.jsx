@@ -17,6 +17,7 @@ import RFQList from './features/rfq/pages/RFQList';
 import CreateRFQ from './features/rfq/pages/CreateRFQ';
 import EditRFQ from './features/rfq/pages/EditRFQ';
 import RFQDetails from './features/rfq/pages/RFQDetails';
+import Login from './features/auth/pages/Login';
 
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
@@ -43,6 +44,8 @@ function App() {
     <Router>
       <Toaster position="top-right" />
       <Routes>
+        <Route path="/login" element={<Login />} />
+        
         <Route path="/" element={
           <PrivateRoute>
             <AdminLayout />

@@ -9,7 +9,7 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
+app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/vendors", vendorRoutes);
 app.use("/api/v1/purchase-requests", require("./routes/purchaseRequest.routes"));
 app.use("/api/v1/rfqs", require("./routes/rfq.routes"));

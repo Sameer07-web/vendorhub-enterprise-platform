@@ -23,7 +23,9 @@ axiosInstance.interceptors.response.use(
     if (response) {
       if (response.status === 401) {
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       } else if (response.status === 403) {
         toast.error('Permission denied');
       } else if (response.status === 500) {

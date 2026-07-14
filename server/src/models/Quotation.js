@@ -69,8 +69,7 @@ const quotationSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ['SUBMITTED', 'UNDER_REVIEW', 'SELECTED', 'REJECTED', 'EXPIRED'],
-      default: 'SUBMITTED',
-      index: true
+      default: 'SUBMITTED'
     },
     comparisonScore: {
       type: Number,
