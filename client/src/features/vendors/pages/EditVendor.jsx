@@ -38,7 +38,7 @@ const EditVendor = () => {
       const response = await updateVendor(id, data);
       if (response.success) {
         toast.success('Vendor updated successfully');
-        navigate('/vendors');
+        navigate('/app/vendors');
       }
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to update vendor';
@@ -58,7 +58,7 @@ const EditVendor = () => {
         <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
+          <button onClick={() => navigate('/app/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
             <ArrowLeft size={16} /> Back to Vendors
           </button>
         </div>
@@ -70,7 +70,7 @@ const EditVendor = () => {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <button 
-          onClick={() => navigate('/vendors')}
+          onClick={() => navigate('/app/vendors')}
           className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors shrink-0 focus-ring"
         >
           <ArrowLeft size={20} />

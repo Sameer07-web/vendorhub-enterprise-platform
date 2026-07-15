@@ -74,7 +74,7 @@ const RFQTable = ({
       align: 'right',
       stickyRight: true,
       render: (rfq) => (
-        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+        <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-30 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity duration-150">
           <Link
             to={`/rfqs/${rfq._id}`}
             className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors focus-ring"

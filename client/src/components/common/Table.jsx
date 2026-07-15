@@ -32,7 +32,7 @@ const Table = ({
     <div className={`bg-white rounded-lg shadow-sm border border-border overflow-hidden animate-fade-in ${className}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-border relative">
-          <thead className="bg-surface-50">
+          <thead className="bg-surface-50 sticky top-0 z-30 shadow-[0_1px_0_0_var(--color-border)]">
             <tr>
               {columns.map((col, index) => (
                 <th 
@@ -54,7 +54,14 @@ const Table = ({
               <tr 
                 key={row.id || row._id || rowIndex} 
                 onClick={() => onRowClick && onRowClick(row)}
-                className={`group transition-colors duration-200 ${onRowClick ? 'cursor-pointer hover:bg-primary-50/30' : 'hover:bg-surface-50/50'}`}
+                className={`group transition-colors duration-150 focus-within:bg-surface-50 ${onRowClick ? 'cursor-pointer hover:bg-primary-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:-outline-offset-2 focus:ring-primary-500' : 'hover:bg-surface-50'}`}
+                tabIndex={onRowClick ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (onRowClick && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onRowClick(row);
+                  }
+                }}
               >
                 {columns.map((col, colIndex) => {
                   const content = col.render ? col.render(row, rowIndex) : row[col.key];
@@ -63,7 +70,7 @@ const Table = ({
                       key={`${rowIndex}-${col.key || colIndex}`} 
                       className={`px-6 py-4 text-sm text-surface-700
                         ${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'}
-                        ${col.stickyRight ? 'sticky right-0 bg-white group-hover:bg-surface-50/50 border-l border-border transition-colors duration-200 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]' : ''}
+                        ${col.stickyRight ? 'sticky right-0 bg-white group-hover:bg-surface-50 group-focus-within:bg-surface-50 border-l border-border transition-colors duration-150 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.02)]' : ''}
                       `}
                     >
                       {content}

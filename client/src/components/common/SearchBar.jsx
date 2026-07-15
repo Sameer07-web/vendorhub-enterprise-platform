@@ -14,13 +14,13 @@ const SearchBar = ({ onSearch, placeholder = 'Search...', className = '' }) => {
 
   return (
     <div className={`relative ${className}`}>
-      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <Search className="w-4 h-4 text-slate-400" aria-hidden="true" />
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none">
+        <Search size={16} aria-hidden="true" />
       </div>
       <input
         type="text"
         aria-label={placeholder}
-        className="block w-full py-2 pl-9 pr-3 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 bg-white placeholder:text-slate-400 transition-all duration-200"
+        className="block w-full rounded-md border border-border px-3 py-2 pl-9 text-sm transition-all duration-150 placeholder:text-surface-400 focus:outline-none focus-ring hover:border-border-hover bg-white"
         placeholder={placeholder}
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}

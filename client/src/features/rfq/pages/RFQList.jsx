@@ -143,7 +143,7 @@ const RFQList = () => {
           <p className="text-sm text-surface-500 mt-1">Manage vendor quotation requests and responses.</p>
         </div>
         {canCreateRFQ() && (
-          <Button variant="primary" onClick={() => navigate('/rfqs/new')} className="shadow-sm" startIcon={Plus}>
+          <Button variant="primary" onClick={() => navigate('/app/rfqs/new')} className="shadow-sm" startIcon={Plus}>
             Create RFQ
           </Button>
         )}
@@ -194,7 +194,7 @@ const RFQList = () => {
                   setStatus('');
                   updateUrlParams({ search: '', status: '', page: 1 });
                 } else if (canCreateRFQ()) {
-                  navigate('/rfqs/new');
+                  navigate('/app/rfqs/new');
                 }
               }}
             />

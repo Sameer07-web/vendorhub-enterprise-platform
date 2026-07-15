@@ -12,7 +12,7 @@ const Button = ({
   disabled,
   ...props 
 }) => {
-  const baseStyle = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-200 focus-ring disabled:opacity-60 disabled:cursor-not-allowed select-none active:scale-[0.98]';
+  const baseStyle = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-150 focus-ring disabled:opacity-60 disabled:cursor-not-allowed select-none active:scale-[0.98]';
   
   const variants = {
     primary: 'bg-primary-600 text-white hover:bg-primary-700 shadow-sm border border-transparent',

@@ -15,7 +15,7 @@ const CreateVendor = () => {
       const response = await createVendor(data);
       if (response.success) {
         toast.success('Vendor created successfully');
-        navigate('/vendors');
+        navigate('/app/vendors');
       }
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to create vendor';
@@ -29,7 +29,7 @@ const CreateVendor = () => {
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <button 
-          onClick={() => navigate('/vendors')}
+          onClick={() => navigate('/app/vendors')}
           className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors shrink-0 focus-ring"
         >
           <ArrowLeft size={20} />

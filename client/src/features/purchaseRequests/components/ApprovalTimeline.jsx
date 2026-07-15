@@ -14,8 +14,8 @@ const ApprovalTimeline = ({ purchaseRequest }) => {
       date: createdAt,
       icon: FileEdit,
       isCompleted: !!createdAt,
-      statusColor: 'text-slate-500',
-      bgColor: 'bg-slate-100'
+      statusColor: 'text-surface-500',
+      bgColor: 'bg-surface-100'
     },
     {
       title: 'Submitted',
@@ -23,8 +23,8 @@ const ApprovalTimeline = ({ purchaseRequest }) => {
       date: submittedAt,
       icon: Clock,
       isCompleted: !!submittedAt || status === 'APPROVED' || status === 'REJECTED',
-      statusColor: 'text-blue-500',
-      bgColor: 'bg-blue-100'
+      statusColor: 'text-primary-500',
+      bgColor: 'bg-primary-100'
     }
   ];
 
@@ -45,8 +45,8 @@ const ApprovalTimeline = ({ purchaseRequest }) => {
       date: approvedAt,
       icon: XCircle,
       isCompleted: true,
-      statusColor: 'text-red-500',
-      bgColor: 'bg-red-100'
+      statusColor: 'text-error-500',
+      bgColor: 'bg-error-100'
     });
   } else if (status === 'CANCELLED') {
     steps.push({
@@ -66,27 +66,27 @@ const ApprovalTimeline = ({ purchaseRequest }) => {
       date: null,
       icon: Clock,
       isCompleted: false,
-      statusColor: 'text-slate-300',
-      bgColor: 'bg-slate-50'
+      statusColor: 'text-surface-300',
+      bgColor: 'bg-surface-50'
     });
   }
 
   return (
-    <div className="relative pl-4 border-l-2 border-slate-200 space-y-6 mt-4 ml-2" aria-label="Approval Timeline">
+    <div className="relative pl-4 border-l-2 border-surface-200 space-y-6 mt-4 ml-2" aria-label="Approval Timeline">
       {steps.map((step, index) => {
         const Icon = step.icon;
         return (
           <div key={index} className="relative">
-            <div className={`absolute -left-7 top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${step.isCompleted ? step.bgColor : 'bg-slate-100'}`}>
-              <Icon size={14} className={step.isCompleted ? step.statusColor : 'text-slate-400'} />
+            <div className={`absolute -left-7 top-1 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm ${step.isCompleted ? step.bgColor : 'bg-surface-100'}`}>
+              <Icon size={14} className={step.isCompleted ? step.statusColor : 'text-surface-400'} />
             </div>
             <div>
-              <h4 className={`text-sm font-medium ${step.isCompleted ? 'text-slate-800' : 'text-slate-500'}`}>
+              <h4 className={`text-sm font-medium ${step.isCompleted ? 'text-surface-800' : 'text-surface-500'}`}>
                 {step.title}
               </h4>
-              <p className="text-xs text-slate-500 mt-0.5">{step.description}</p>
+              <p className="text-xs text-surface-500 mt-0.5">{step.description}</p>
               {step.date && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-surface-400 mt-1">
                   {formatDate(step.date, true)}
                 </p>
               )}

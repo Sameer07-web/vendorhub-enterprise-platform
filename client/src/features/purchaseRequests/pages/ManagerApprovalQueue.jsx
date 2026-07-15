@@ -11,8 +11,8 @@ import EmptyState from '../../../components/common/EmptyState';
 import { ClipboardCheck, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const SummaryCard = ({ title, value, icon: Icon, colorClass }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-border p-5 flex items-center group hover:shadow-md transition-shadow duration-300">
-    <div className={`p-3 rounded-full ${colorClass} bg-opacity-10 mr-4 ring-1 ring-inset ${colorClass.replace('text-', 'ring-').replace('500', '500/20').replace('600', '600/20')} group-hover:scale-110 transition-transform duration-300`}>
+  <div className="bg-white rounded-xl shadow-sm border border-border p-5 flex items-center group hover:shadow-md transition-shadow duration-150">
+    <div className={`p-3 rounded-full ${colorClass} bg-opacity-10 mr-4 ring-1 ring-inset ${colorClass.replace('text-', 'ring-').replace('500', '500/20').replace('600', '600/20')} group-hover:scale-110 transition-transform duration-150`}>
       <Icon size={24} className={colorClass} />
     </div>
     <div>

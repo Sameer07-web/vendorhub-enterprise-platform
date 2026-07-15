@@ -7,7 +7,7 @@ import Table from '../../../components/common/Table';
 import { Link, useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon: Icon, trend, trendValue, colorClass, subtitle }) => (
-  <Card className="hover:shadow-md transition-shadow duration-300">
+  <Card className="hover:shadow-md transition-shadow duration-150">
     <CardBody className="p-5 flex flex-col justify-between h-full">
       <div className="flex items-start justify-between mb-4">
         <div className={`p-2.5 rounded-xl ${colorClass} bg-opacity-10 ring-1 ring-inset ${colorClass.replace('bg-', 'ring-').replace('500', '500/20').replace('600', '600/20')}`}>
@@ -83,7 +83,7 @@ const Dashboard = () => {
         </div>
         <div className="flex gap-3">
           <Button variant="secondary" startIcon={FileText}>Generate Report</Button>
-          <Button variant="primary" startIcon={Plus} onClick={() => navigate('/purchase-requests/new')}>New Request</Button>
+          <Button variant="primary" startIcon={Plus} onClick={() => navigate('/app/purchase-requests/new')}>New Request</Button>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-surface-900">Action Required</h2>
-            <Link to="/purchase-requests/approval" className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 focus-ring rounded transition-colors">
+            <Link to="/app/purchase-requests/approval" className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 focus-ring rounded transition-colors">
               View approval queue <ArrowRight size={16} />
             </Link>
           </div>
@@ -138,7 +138,7 @@ const Dashboard = () => {
           <Table 
             columns={approvalColumns}
             data={pendingApprovals}
-            onRowClick={(row) => navigate(`/purchase-requests/${row.id}`)}
+            onRowClick={(row) => navigate(`/app/purchase-requests/${row.id}`)}
           />
         </div>
 
@@ -155,7 +155,7 @@ const Dashboard = () => {
               <Button 
                 variant="primary" 
                 className="w-full bg-white text-surface-900 hover:bg-surface-50 border-transparent"
-                onClick={() => navigate('/vendors/new')}
+                onClick={() => navigate('/app/vendors/new')}
                 endIcon={ExternalLink}
               >
                 Onboard New Vendor

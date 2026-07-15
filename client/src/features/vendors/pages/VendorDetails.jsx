@@ -42,7 +42,7 @@ const VendorDetails = () => {
         <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
+          <button onClick={() => navigate('/app/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
             <ArrowLeft size={16} /> Back to Vendors
           </button>
         </div>
@@ -59,7 +59,7 @@ const VendorDetails = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => navigate('/vendors')}
+            onClick={() => navigate('/app/vendors')}
             className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors shrink-0 focus-ring"
           >
             <ArrowLeft size={20} />

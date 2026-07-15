@@ -1,7 +1,7 @@
 import React from 'react';
 import VendorStatusBadge from './VendorStatusBadge';
 import { Building2, Mail, Phone, Globe, MapPin, FileText, Star } from 'lucide-react';
-import { Card, CardHeader, CardBody } from '../../../components/common/Card';
+import { Card } from '../../../components/common/Card';
 
 const VendorCard = ({ vendor }) => {
   return (

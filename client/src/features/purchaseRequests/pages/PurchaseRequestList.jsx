@@ -195,7 +195,7 @@ const PurchaseRequestList = () => {
           <p className="text-sm text-surface-500 mt-1">Manage and track organizational purchase requests.</p>
         </div>
         {canCreatePurchaseRequest() && (
-          <Button onClick={() => navigate('/purchase-requests/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
+          <Button onClick={() => navigate('/app/purchase-requests/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
             Create Request
           </Button>
         )}
@@ -273,7 +273,7 @@ const PurchaseRequestList = () => {
               message="We couldn't find any purchase requests matching your criteria."
               icon={ShoppingCart}
               actionLabel={canCreatePurchaseRequest() ? "Create Purchase Request" : undefined}
-              onAction={canCreatePurchaseRequest() ? () => navigate('/purchase-requests/new') : undefined}
+              onAction={canCreatePurchaseRequest() ? () => navigate('/app/purchase-requests/new') : undefined}
               secondaryActionLabel={(search || status || priority || department) ? "Clear Filters" : undefined}
               onSecondaryAction={(search || status || priority || department) ? clearFilters : undefined}
             />

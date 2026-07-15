@@ -23,13 +23,13 @@ const Select = forwardRef(({ label, error, success, helperText, required, option
           ref={ref}
           required={required}
           aria-invalid={isError ? "true" : "false"}
-          className={`block w-full rounded-md border bg-white px-3 py-2 text-sm transition-all duration-200 focus:outline-none disabled:bg-surface-50 disabled:text-surface-500 disabled:cursor-not-allowed appearance-none
+          className={`block w-full rounded-md border bg-white px-3 py-2 text-sm transition-all duration-150 focus:outline-none disabled:bg-surface-50 disabled:text-surface-500 disabled:cursor-not-allowed appearance-none
             ${Icon ? 'pl-9' : ''}
             ${(isError || isSuccess) ? 'pr-9' : ''}
             ${isError 
-              ? 'border-error-500 focus-visible:ring-2 focus-visible:ring-error-500/30 focus-visible:border-error-500 bg-error-50/10' 
+              ? 'border-error-500 focus-visible:ring-2 focus-visible:ring-error-600 focus-visible:ring-offset-1 focus-visible:border-error-600 bg-error-50/10' 
               : isSuccess 
-                ? 'border-success-500 focus-visible:ring-2 focus-visible:ring-success-500/30 focus-visible:border-success-500 bg-success-50/10' 
+                ? 'border-success-500 focus-visible:ring-2 focus-visible:ring-success-600 focus-visible:ring-offset-1 focus-visible:border-success-600 bg-success-50/10' 
                 : 'border-border focus-ring hover:border-border-hover'}
             ${className}`}
           {...props}

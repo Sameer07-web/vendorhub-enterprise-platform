@@ -5,16 +5,16 @@ import { isManager, isAdmin } from '../../utils/permissions';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navItems = [
-    { label: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { label: 'Vendors', path: '/vendors', icon: Users },
-    { label: 'Purchase Requests', path: '/purchase-requests', icon: FileText },
-    ...(isManager() || isAdmin() ? [{ label: 'Approvals', path: '/purchase-requests/approval', icon: ClipboardCheck }] : []),
-    { label: 'RFQs', path: '/rfqs', icon: FileSearch },
-    { label: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
+    { label: 'Dashboard', path: '/app', icon: LayoutDashboard },
+    { label: 'Vendors', path: '/app/vendors', icon: Users },
+    { label: 'Purchase Requests', path: '/app/purchase-requests', icon: FileText },
+    ...(isManager() || isAdmin() ? [{ label: 'Approvals', path: '/app/purchase-requests/approval', icon: ClipboardCheck }] : []),
+    { label: 'RFQs', path: '/app/rfqs', icon: FileSearch },
+    { label: 'Purchase Orders', path: '/app/purchase-orders', icon: ShoppingCart },
   ];
   
   const bottomNavItems = [
-    { label: 'Settings', path: '/settings', icon: Settings },
+    { label: 'Settings', path: '/app/settings', icon: Settings },
   ];
 
   return (
@@ -30,7 +30,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <aside
         aria-label="Sidebar"
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-surface-900 border-r border-surface-800 flex flex-col transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-surface-900 border-r border-surface-800 flex flex-col transform transition-transform duration-150 lg:translate-x-0 lg:static lg:inset-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -54,7 +54,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center px-3 py-2.5 rounded-md transition-all duration-200 group ${
+                  `flex items-center px-3 py-2.5 rounded-md transition-all duration-150 group ${
                     isActive
                       ? 'bg-primary-600/10 text-primary-400 font-medium'
                       : 'text-surface-400 hover:bg-surface-800/50 hover:text-surface-200'
@@ -76,7 +76,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `flex items-center px-3 py-2.5 rounded-md transition-all duration-200 group ${
+                  `flex items-center px-3 py-2.5 rounded-md transition-all duration-150 group ${
                     isActive
                       ? 'bg-primary-600/10 text-primary-400 font-medium'
                       : 'text-surface-400 hover:bg-surface-800/50 hover:text-surface-200'

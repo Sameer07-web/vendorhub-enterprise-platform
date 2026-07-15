@@ -14,7 +14,7 @@ const CreatePurchaseRequest = () => {
       setIsSubmitting(true);
       await createPurchaseRequest(formData);
       toast.success('Purchase Request created successfully');
-      navigate('/purchase-requests');
+      navigate('/app/purchase-requests');
     } catch (error) {
       toast.error(error?.response?.data?.message || 'Failed to create Purchase Request');
     } finally {
@@ -27,14 +27,14 @@ const CreatePurchaseRequest = () => {
       <div className="flex items-center space-x-4">
         <button 
           onClick={() => navigate(-1)}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+          className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Create Purchase Request</h1>
-          <p className="text-sm text-slate-500 mt-1">Draft a new request for procurement.</p>
+          <h1 className="text-2xl font-bold text-surface-900">Create Purchase Request</h1>
+          <p className="text-sm text-surface-500 mt-1">Draft a new request for procurement.</p>
         </div>
       </div>
 

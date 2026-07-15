@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '../../../components/common/Input';
 import Select from '../../../components/common/Select';
+import Textarea from '../../../components/common/Textarea';
 import Button from '../../../components/common/Button';
 import { getVendors } from '../../../api/vendor.api';
 import { DEPARTMENTS, CURRENCIES, PR_PRIORITY } from '../../../utils/constants';
@@ -115,31 +116,30 @@ const PurchaseRequestForm = ({ initialData, onSubmit, isSubmitting, mode = 'crea
   const vendorOptions = vendors.map(v => ({ value: v._id, label: `${v.vendorCode} — ${v.companyName}` }));
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-surface-200 p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <h3 className="md:col-span-2 text-lg font-medium text-slate-800 border-b pb-2 mb-2">General Information</h3>
+        <h3 className="md:col-span-2 text-lg font-medium text-surface-800 border-b pb-2 mb-2">General Information</h3>
         
         <Input label="Title" name="title" value={formData.title} onChange={handleChange} error={errors.title} placeholder="Enter request title" disabled={isReadOnly} />
         <Select label="Department" name="department" value={formData.department} onChange={handleChange} options={departmentOptions} error={errors.department} disabled={isReadOnly} />
         
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-          <textarea
+          <Textarea
+            label="Description"
             name="description"
             value={formData.description}
             onChange={handleChange}
             disabled={isReadOnly}
             rows={3}
-            className={`block w-full rounded-md border ${errors.description ? 'border-red-500' : 'border-slate-300'} px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500`}
+            error={errors.description}
             placeholder="Detailed description of the request"
           />
-          {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
         </div>
 
         <Input label="Category" name="category" value={formData.category} onChange={handleChange} error={errors.category} placeholder="e.g. IT Equipment" disabled={isReadOnly} />
         <Input label="Required Date" name="requiredDate" type="date" value={formData.requiredDate} onChange={handleChange} error={errors.requiredDate} disabled={isReadOnly} />
 
-        <h3 className="md:col-span-2 text-lg font-medium text-slate-800 border-b pb-2 mt-4 mb-2">Vendor & Financials</h3>
+        <h3 className="md:col-span-2 text-lg font-medium text-surface-800 border-b pb-2 mt-4 mb-2">Vendor & Financials</h3>
         
         <div className="md:col-span-2 relative">
           <Select 
@@ -151,11 +151,11 @@ const PurchaseRequestForm = ({ initialData, onSubmit, isSubmitting, mode = 'crea
             error={errors.vendor} 
             disabled={isReadOnly || loadingVendors} 
           />
-          {loadingVendors && <span className="absolute top-8 right-10 text-xs text-slate-400">Loading...</span>}
+          {loadingVendors && <span className="absolute top-8 right-10 text-xs text-surface-400">Loading...</span>}
           {vendorError && !isReadOnly && (
-            <div className="mt-1 flex items-center justify-between text-xs text-red-500">
+            <div className="mt-1 flex items-center justify-between text-xs text-error-500">
               <span>Failed to load vendors.</span>
-              <button type="button" onClick={fetchVendorList} className="text-blue-600 hover:underline">Retry</button>
+              <button type="button" onClick={fetchVendorList} className="text-primary-600 hover:underline">Retry</button>
             </div>
           )}
         </div>
@@ -170,14 +170,13 @@ const PurchaseRequestForm = ({ initialData, onSubmit, isSubmitting, mode = 'crea
         <Select label="Priority" name="priority" value={formData.priority} onChange={handleChange} options={priorityOptions} disabled={isReadOnly} />
 
         <div className="md:col-span-2 mt-4">
-          <label className="block text-sm font-medium text-slate-700 mb-1">Internal Notes (Optional)</label>
-          <textarea
+          <Textarea
+            label="Internal Notes (Optional)"
             name="notes"
             value={formData.notes || ''}
             onChange={handleChange}
             disabled={isReadOnly}
             rows={2}
-            className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
             placeholder="Any additional internal notes..."
           />
         </div>

@@ -13,9 +13,9 @@ import { formatDate } from '../../../utils/formatDate';
 import { canEditRFQ, canSendRFQ, canCloseRFQ, canCancelRFQ } from '../../../utils/permissions';
 
 const Card = ({ title, children, rightAction }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-      <h3 className="text-lg font-medium text-slate-800">{title}</h3>
+  <div className="bg-white rounded-lg shadow-sm border border-surface-200 overflow-hidden">
+    <div className="px-6 py-4 border-b border-surface-200 bg-surface-50 flex justify-between items-center">
+      <h3 className="text-lg font-medium text-surface-800">{title}</h3>
       {rightAction && <div>{rightAction}</div>}
     </div>
     <div className="p-6">{children}</div>
@@ -101,10 +101,10 @@ const RFQDetails = () => {
   if (error) {
     return (
       <div className="max-w-5xl mx-auto mt-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200">
+        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/rfqs')} className="mt-4 text-sm font-medium hover:underline">
+          <button onClick={() => navigate('/app/rfqs')} className="mt-4 text-sm font-medium hover:underline">
             &larr; Back to RFQs
           </button>
         </div>
@@ -119,18 +119,18 @@ const RFQDetails = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <button 
-            onClick={() => navigate('/rfqs')}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            onClick={() => navigate('/app/rfqs')}
+            className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
             aria-label="Go back"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{rfq.rfqNumber}</h1>
+              <h1 className="text-2xl font-bold text-surface-900">{rfq.rfqNumber}</h1>
               <RFQStatusBadge status={rfq.status} />
             </div>
-            <p className="text-sm text-slate-500 mt-1">{rfq.title}</p>
+            <p className="text-sm text-surface-500 mt-1">{rfq.title}</p>
           </div>
         </div>
         
@@ -163,18 +163,18 @@ const RFQDetails = () => {
           <Card title="General Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Title</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.title}</dd>
+                <dt className="text-sm font-medium text-surface-500">Title</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.title}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Quotation Deadline</dt>
-                <dd className={`mt-1 text-sm font-medium ${new Date(rfq.quotationDeadline) < new Date() && !['CLOSED', 'CANCELLED'].includes(rfq.status) ? 'text-red-600' : 'text-slate-900'}`}>
+                <dt className="text-sm font-medium text-surface-500">Quotation Deadline</dt>
+                <dd className={`mt-1 text-sm font-medium ${new Date(rfq.quotationDeadline) < new Date() && !['CLOSED', 'CANCELLED'].includes(rfq.status) ? 'text-error-600' : 'text-surface-900'}`}>
                   {formatDate(rfq.quotationDeadline)}
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-slate-500">Description</dt>
-                <dd className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{rfq.description || 'No description provided.'}</dd>
+                <dt className="text-sm font-medium text-surface-500">Description</dt>
+                <dd className="mt-1 text-sm text-surface-900 whitespace-pre-wrap">{rfq.description || 'No description provided.'}</dd>
               </div>
             </dl>
           </Card>
@@ -182,48 +182,48 @@ const RFQDetails = () => {
           <Card 
             title="Purchase Request Snapshot" 
             rightAction={
-              <Link to={`/purchase-requests/${rfq.purchaseRequest?._id || rfq.purchaseRequest}`} className="text-sm text-blue-600 hover:underline flex items-center">
+              <Link to={`/purchase-requests/${rfq.purchaseRequest?._id || rfq.purchaseRequest}`} className="text-sm text-primary-600 hover:underline flex items-center">
                 <FileText size={14} className="mr-1" /> View Original PR
               </Link>
             }
           >
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Request Number</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.purchaseRequestSnapshot?.requestNumber}</dd>
+                <dt className="text-sm font-medium text-surface-500">Request Number</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.purchaseRequestSnapshot?.requestNumber}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Title</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.purchaseRequestSnapshot?.title}</dd>
+                <dt className="text-sm font-medium text-surface-500">Title</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.purchaseRequestSnapshot?.title}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Department</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.purchaseRequestSnapshot?.department}</dd>
+                <dt className="text-sm font-medium text-surface-500">Department</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.purchaseRequestSnapshot?.department}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Priority</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.purchaseRequestSnapshot?.priority}</dd>
+                <dt className="text-sm font-medium text-surface-500">Priority</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.purchaseRequestSnapshot?.priority}</dd>
               </div>
             </dl>
           </Card>
 
           <Card title="Selected Vendors">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200">
-                <thead className="bg-slate-50">
+              <table className="min-w-full divide-y divide-surface-200">
+                <thead className="bg-surface-50">
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Vendor Code</th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Company Name</th>
-                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Action</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Vendor Code</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-surface-500 uppercase">Company Name</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-surface-500 uppercase">Action</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-slate-200">
+                <tbody className="bg-white divide-y divide-surface-200">
                   {rfq.vendors?.map((vendor) => (
                     <tr key={vendor._id}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{vendor.vendorCode}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900">{vendor.companyName}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-surface-900">{vendor.vendorCode}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-surface-900">{vendor.companyName}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                        <Link to={`/vendors/${vendor._id}`} className="text-blue-600 hover:text-blue-900 hover:underline">Profile</Link>
+                        <Link to={`/vendors/${vendor._id}`} className="text-primary-600 hover:text-primary-900 hover:underline">Profile</Link>
                       </td>
                     </tr>
                   ))}
@@ -234,9 +234,9 @@ const RFQDetails = () => {
 
           <Card title="Vendor Quotations">
             <div className="text-center py-8">
-              <FileText className="mx-auto h-12 w-12 text-slate-300" />
-              <h3 className="mt-2 text-sm font-medium text-slate-900">No quotations received yet.</h3>
-              <p className="mt-1 text-sm text-slate-500">Vendor Quotation module will populate this section.</p>
+              <FileText className="mx-auto h-12 w-12 text-surface-300" />
+              <h3 className="mt-2 text-sm font-medium text-surface-900">No quotations received yet.</h3>
+              <p className="mt-1 text-sm text-surface-500">Vendor Quotation module will populate this section.</p>
             </div>
           </Card>
         </div>
@@ -253,14 +253,14 @@ const RFQDetails = () => {
           <Card title="Audit Information">
             <dl className="space-y-4">
               <div>
-                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created By</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.createdBy?.fullName}</dd>
-                <dd className="text-xs text-slate-500">{formatDate(rfq.createdAt, true)}</dd>
+                <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Created By</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.createdBy?.fullName}</dd>
+                <dd className="text-xs text-surface-500">{formatDate(rfq.createdAt, true)}</dd>
               </div>
               <div>
-                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Last Updated By</dt>
-                <dd className="mt-1 text-sm text-slate-900">{rfq.updatedBy?.fullName || rfq.createdBy?.fullName}</dd>
-                <dd className="text-xs text-slate-500">{formatDate(rfq.updatedAt, true)}</dd>
+                <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Last Updated By</dt>
+                <dd className="mt-1 text-sm text-surface-900">{rfq.updatedBy?.fullName || rfq.createdBy?.fullName}</dd>
+                <dd className="text-xs text-surface-500">{formatDate(rfq.updatedAt, true)}</dd>
               </div>
             </dl>
           </Card>

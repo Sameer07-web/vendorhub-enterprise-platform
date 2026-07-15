@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
+import Select from '../../../components/common/Select';
+import Textarea from '../../../components/common/Textarea';
 import VendorSelectionTable from './VendorSelectionTable';
 import { getPurchaseRequests } from '../../../api/purchaseRequest.api';
 import { getVendors } from '../../../api/vendor.api';
@@ -154,39 +156,28 @@ const RFQForm = ({ initialData, isReadOnly = false, mode = 'create' }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl bg-white p-6 rounded-lg shadow-sm border border-surface-200">
       
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-slate-800 pb-2 border-b border-slate-100">General Details</h3>
+        <h3 className="text-lg font-medium text-surface-800 pb-2 border-b border-surface-100">General Details</h3>
         
         {mode === 'create' ? (
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Select Approved Purchase Request <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="purchaseRequest"
-              value={formData.purchaseRequest}
-              onChange={handlePRChange}
-              className={`w-full rounded-md shadow-sm sm:text-sm transition-colors focus:ring-2 focus:ring-opacity-50 ${
-                errors.purchaseRequest 
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500'
-              }`}
-            >
-              <option value="">-- Select a Purchase Request --</option>
-              {approvedPRs.map(pr => (
-                <option key={pr._id} value={pr._id}>
-                  {pr.requestNumber} | {pr.title} | {pr.department} | {pr.priority}
-                </option>
-              ))}
-            </select>
-            {errors.purchaseRequest && <p className="mt-1 text-sm text-red-600">{errors.purchaseRequest}</p>}
-          </div>
+          <Select
+            label="Approved Purchase Request"
+            name="purchaseRequest"
+            value={formData.purchaseRequest}
+            onChange={handlePRChange}
+            error={errors.purchaseRequest}
+            required
+            options={approvedPRs.map(pr => ({
+              value: pr._id,
+              label: `${pr.requestNumber} | ${pr.title} | ${pr.department} | ${pr.priority}`
+            }))}
+          />
         ) : (
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Request</label>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-md text-sm text-slate-700">
+            <label className="block text-sm font-medium text-surface-700 mb-1">Purchase Request</label>
+            <div className="p-3 bg-surface-50 border border-surface-200 rounded-md text-sm text-surface-700">
               {initialData?.purchaseRequestSnapshot?.requestNumber} | {initialData?.purchaseRequestSnapshot?.title}
             </div>
           </div>
@@ -202,17 +193,14 @@ const RFQForm = ({ initialData, isReadOnly = false, mode = 'create' }) => {
           disabled={isReadOnly}
         />
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={4}
-            disabled={isReadOnly}
-            className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-slate-100 disabled:text-slate-500"
-          />
-        </div>
+        <Textarea
+          label="Description (Optional)"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          rows={4}
+          disabled={isReadOnly}
+        />
 
         <Input
           label="Quotation Deadline"
@@ -227,8 +215,8 @@ const RFQForm = ({ initialData, isReadOnly = false, mode = 'create' }) => {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-slate-800 pb-2 border-b border-slate-100">Assign Vendors</h3>
-        {errors.vendors && <p className="text-sm text-red-600">{errors.vendors}</p>}
+        <h3 className="text-lg font-medium text-surface-800 pb-2 border-b border-surface-100">Assign Vendors</h3>
+        {errors.vendors && <p className="text-sm text-error-600">{errors.vendors}</p>}
         <VendorSelectionTable 
           vendors={mode === 'create' ? activeVendors : (isReadOnly ? initialData.vendors : activeVendors)} 
           selectedVendorIds={formData.vendors}
@@ -238,7 +226,7 @@ const RFQForm = ({ initialData, isReadOnly = false, mode = 'create' }) => {
       </div>
 
       {!isReadOnly && (
-        <div className="flex justify-end space-x-3 pt-6 border-t border-slate-100">
+        <div className="flex justify-end space-x-3 pt-6 border-t border-surface-100">
           <Button variant="ghost" type="button" onClick={() => navigate(-1)} disabled={isSubmitting}>
             Cancel
           </Button>

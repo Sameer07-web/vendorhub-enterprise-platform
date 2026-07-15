@@ -20,9 +20,9 @@ import {
 } from '../../../utils/permissions';
 
 const Card = ({ title, children }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-      <h3 className="text-lg font-medium text-slate-800">{title}</h3>
+  <div className="bg-white rounded-lg shadow-sm border border-surface-200 overflow-hidden">
+    <div className="px-6 py-4 border-b border-surface-200 bg-surface-50">
+      <h3 className="text-lg font-medium text-surface-800">{title}</h3>
     </div>
     <div className="p-6">{children}</div>
   </div>
@@ -110,10 +110,10 @@ const PurchaseRequestDetails = () => {
   if (error) {
     return (
       <div className="max-w-5xl mx-auto mt-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200">
+        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/purchase-requests')} className="mt-4 text-sm font-medium hover:underline">
+          <button onClick={() => navigate('/app/purchase-requests')} className="mt-4 text-sm font-medium hover:underline">
             &larr; Back to Requests
           </button>
         </div>
@@ -128,18 +128,18 @@ const PurchaseRequestDetails = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button 
-            onClick={() => navigate('/purchase-requests')}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            onClick={() => navigate('/app/purchase-requests')}
+            className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
             aria-label="Go back"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{pr.requestNumber}</h1>
+              <h1 className="text-2xl font-bold text-surface-900">{pr.requestNumber}</h1>
               <PurchaseRequestStatusBadge status={pr.status} />
             </div>
-            <p className="text-sm text-slate-500 mt-1">{pr.title}</p>
+            <p className="text-sm text-surface-500 mt-1">{pr.title}</p>
           </div>
         </div>
         
@@ -172,24 +172,24 @@ const PurchaseRequestDetails = () => {
           <Card title="General Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Title</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.title}</dd>
+                <dt className="text-sm font-medium text-surface-500">Title</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.title}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Department</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.department}</dd>
+                <dt className="text-sm font-medium text-surface-500">Department</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.department}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Category</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.category}</dd>
+                <dt className="text-sm font-medium text-surface-500">Category</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.category}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Priority</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.priority}</dd>
+                <dt className="text-sm font-medium text-surface-500">Priority</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.priority}</dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-slate-500">Description</dt>
-                <dd className="mt-1 text-sm text-slate-900 whitespace-pre-wrap">{pr.description}</dd>
+                <dt className="text-sm font-medium text-surface-500">Description</dt>
+                <dd className="mt-1 text-sm text-surface-900 whitespace-pre-wrap">{pr.description}</dd>
               </div>
             </dl>
           </Card>
@@ -197,18 +197,18 @@ const PurchaseRequestDetails = () => {
           <Card title="Financial Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
-                <dt className="text-sm font-medium text-slate-500">Estimated Cost</dt>
-                <dd className="mt-1 text-lg font-semibold text-slate-900">
+                <dt className="text-sm font-medium text-surface-500">Estimated Cost</dt>
+                <dd className="mt-1 text-lg font-semibold text-surface-900">
                   {formatCurrency(pr.estimatedCost, pr.currency)}
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Quantity</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.quantity}</dd>
+                <dt className="text-sm font-medium text-surface-500">Quantity</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.quantity}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Required Date</dt>
-                <dd className="mt-1 text-sm text-slate-900">{formatDate(pr.requiredDate)}</dd>
+                <dt className="text-sm font-medium text-surface-500">Required Date</dt>
+                <dd className="mt-1 text-sm text-surface-900">{formatDate(pr.requiredDate)}</dd>
               </div>
             </dl>
           </Card>
@@ -216,22 +216,22 @@ const PurchaseRequestDetails = () => {
           <Card title="Vendor Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div className="sm:col-span-2">
-                <dt className="text-sm font-medium text-slate-500">Selected Vendor</dt>
-                <dd className="mt-1 text-sm text-slate-900 flex items-center">
+                <dt className="text-sm font-medium text-surface-500">Selected Vendor</dt>
+                <dd className="mt-1 text-sm text-surface-900 flex items-center">
                   <span className="font-medium mr-2">{pr.vendor?.companyName}</span>
-                  <span className="text-slate-500">({pr.vendor?.vendorCode})</span>
-                  <Link to={`/vendors/${pr.vendor?._id}`} className="ml-3 text-blue-600 hover:underline text-xs">
+                  <span className="text-surface-500">({pr.vendor?.vendorCode})</span>
+                  <Link to={`/vendors/${pr.vendor?._id}`} className="ml-3 text-primary-600 hover:underline text-xs">
                     View Vendor &rarr;
                   </Link>
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">GST Number</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.vendor?.gstNumber || 'N/A'}</dd>
+                <dt className="text-sm font-medium text-surface-500">GST Number</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.vendor?.gstNumber || 'N/A'}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-slate-500">Vendor Status</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.vendor?.status || 'Unknown'}</dd>
+                <dt className="text-sm font-medium text-surface-500">Vendor Status</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.vendor?.status || 'Unknown'}</dd>
               </div>
             </dl>
           </Card>
@@ -245,14 +245,14 @@ const PurchaseRequestDetails = () => {
           <Card title="Audit Information">
             <dl className="space-y-4">
               <div>
-                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Created By</dt>
-                <dd className="mt-1 text-sm text-slate-900">{pr.createdBy?.fullName}</dd>
-                <dd className="text-xs text-slate-500">{formatDate(pr.createdAt, true)}</dd>
+                <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Created By</dt>
+                <dd className="mt-1 text-sm text-surface-900">{pr.createdBy?.fullName}</dd>
+                <dd className="text-xs text-surface-500">{formatDate(pr.createdAt, true)}</dd>
               </div>
               {pr.managerComments && (
-                <div className="pt-4 border-t border-slate-100">
-                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Manager Comments</dt>
-                  <dd className="mt-1 text-sm text-slate-900 italic bg-slate-50 p-3 rounded-md border border-slate-100">
+                <div className="pt-4 border-t border-surface-100">
+                  <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Manager Comments</dt>
+                  <dd className="mt-1 text-sm text-surface-900 italic bg-surface-50 p-3 rounded-md border border-surface-100">
                     "{pr.managerComments}"
                   </dd>
                 </div>

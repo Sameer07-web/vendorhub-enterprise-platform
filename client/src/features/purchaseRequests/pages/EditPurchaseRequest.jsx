@@ -60,10 +60,10 @@ const EditPurchaseRequest = () => {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200">
+        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/purchase-requests')} className="mt-4 text-sm font-medium hover:underline">
+          <button onClick={() => navigate('/app/purchase-requests')} className="mt-4 text-sm font-medium hover:underline">
             &larr; Back to Requests
           </button>
         </div>
@@ -76,14 +76,14 @@ const EditPurchaseRequest = () => {
       <div className="flex items-center space-x-4">
         <button 
           onClick={() => navigate(-1)}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+          className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Edit Purchase Request</h1>
-          <p className="text-sm text-slate-500 mt-1">Update draft information for {initialData?.requestNumber}.</p>
+          <h1 className="text-2xl font-bold text-surface-900">Edit Purchase Request</h1>
+          <p className="text-sm text-surface-500 mt-1">Update draft information for {initialData?.requestNumber}.</p>
         </div>
       </div>
 

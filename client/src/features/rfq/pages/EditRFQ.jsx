@@ -38,21 +38,21 @@ const EditRFQ = () => {
 
   if (loading) return <Loader rows={8} />;
   
-  if (error) return <EmptyState title="Error Loading RFQ" message={error} actionLabel="Go Back" onAction={() => navigate('/rfqs')} />;
+  if (error) return <EmptyState title="Error Loading RFQ" message={error} actionLabel="Go Back" onAction={() => navigate('/app/rfqs')} />;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center space-x-4">
         <button 
           onClick={() => navigate(-1)}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+          className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Edit Draft RFQ</h1>
-          <p className="text-sm text-slate-500 mt-1">{rfq.rfqNumber} — {rfq.title}</p>
+          <h1 className="text-2xl font-bold text-surface-900">Edit Draft RFQ</h1>
+          <p className="text-sm text-surface-500 mt-1">{rfq.rfqNumber} — {rfq.title}</p>
         </div>
       </div>
       

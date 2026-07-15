@@ -180,7 +180,7 @@ const VendorList = () => {
           <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Vendors</h1>
           <p className="text-sm text-surface-500 mt-1">Manage your enterprise vendors and suppliers.</p>
         </div>
-        <Button onClick={() => navigate('/vendors/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
+        <Button onClick={() => navigate('/app/vendors/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
           Create Vendor
         </Button>
       </div>
@@ -250,7 +250,7 @@ const VendorList = () => {
                 message="We couldn't find any vendors matching your criteria. Try adjusting your filters or add a new vendor."
                 icon={Users}
                 actionLabel="Create Vendor"
-                onAction={() => navigate('/vendors/new')}
+                onAction={() => navigate('/app/vendors/new')}
                 secondaryActionLabel={(search || status || category) ? "Clear Filters" : undefined}
                 onSecondaryAction={(search || status || category) ? () => {
                   setSearch('');
