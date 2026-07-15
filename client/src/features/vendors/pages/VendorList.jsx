@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { Plus, Users, Eye, Edit, Trash2 } from 'lucide-react';
 import { getVendors, deleteVendor } from '../../../api/vendor.api';
-import VendorTable from '../components/VendorTable';
+import Table from '../../../components/common/Table';
+import VendorStatusBadge from '../components/VendorStatusBadge';
 import SearchBar from '../../../components/common/SearchBar';
 import Select from '../../../components/common/Select';
 import Button from '../../../components/common/Button';
 import Pagination from '../../../components/common/Pagination';
-import Loader from '../../../components/common/Loader';
 import EmptyState from '../../../components/common/EmptyState';
 import Modal from '../../../components/common/Modal';
 
@@ -59,7 +59,6 @@ const VendorList = () => {
   }, [pagination.page, pagination.limit, search, status, category, sort]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchVendors();
   }, [fetchVendors]);
 
@@ -77,7 +76,6 @@ const VendorList = () => {
       toast.success('Vendor deleted successfully');
       setDeleteModalOpen(false);
       setVendorToDelete(null);
-      // If deleting the last item on the page, go to previous page if not page 1
       if (vendors.length === 1 && pagination.page > 1) {
         setPagination(prev => ({ ...prev, page: prev.page - 1 }));
       } else {
@@ -117,20 +115,77 @@ const VendorList = () => {
     { value: '-rating', label: 'Highest Rating' },
   ];
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Vendors</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage your enterprise vendors and suppliers.</p>
+  const vendorColumns = [
+    {
+      key: 'vendor',
+      label: 'Vendor',
+      render: (row) => (
+        <div className="flex flex-col">
+          <Link to={`/vendors/${row._id}`} className="text-sm font-semibold text-surface-900 hover:text-primary-600 focus-ring rounded transition-colors w-max">
+            {row.companyName}
+          </Link>
+          <span className="text-xs text-surface-500 font-medium mt-0.5">{row.vendorCode}</span>
         </div>
-        <Button onClick={() => navigate('/vendors/new')} variant="primary" className="shrink-0">
-          <Plus size={18} className="mr-2" />
+      )
+    },
+    { key: 'contactPerson', label: 'Contact Person', render: (row) => <span className="font-medium text-surface-600">{row.contactPerson}</span> },
+    { key: 'vendorCategory', label: 'Category', render: (row) => <span className="text-surface-600">{row.vendorCategory}</span> },
+    { key: 'status', label: 'Status', render: (row) => <VendorStatusBadge status={row.status} /> },
+    { key: 'rating', label: 'Rating', align: 'center', render: (row) => <span className="font-medium text-surface-600">{row.rating ? `${row.rating}/5` : '—'}</span> },
+    { 
+      key: 'createdAt', 
+      label: 'Created', 
+      align: 'right',
+      render: (row) => <span className="text-surface-500">{new Date(row.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span> 
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      align: 'right',
+      stickyRight: true,
+      render: (row) => (
+        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+          <Link 
+            to={`/vendors/${row._id}`} 
+            className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors focus-ring"
+            title="View Details"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Eye size={18} />
+          </Link>
+          <Link 
+            to={`/vendors/${row._id}/edit`} 
+            className="p-1.5 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded-md transition-colors focus-ring"
+            title="Edit Vendor"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Edit size={18} />
+          </Link>
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleDeleteClick(row); }} 
+            className="p-1.5 text-surface-400 hover:text-error-600 hover:bg-error-50 rounded-md transition-colors focus-ring"
+            title="Delete Vendor"
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Vendors</h1>
+          <p className="text-sm text-surface-500 mt-1">Manage your enterprise vendors and suppliers.</p>
+        </div>
+        <Button onClick={() => navigate('/vendors/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
           Create Vendor
         </Button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-4">
+      <div className="bg-white p-5 rounded-lg shadow-sm border border-border space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1">
             <SearchBar 
@@ -159,18 +214,15 @@ const VendorList = () => {
         </div>
 
         {(search || status || category) && (
-          <div className="flex justify-end">
+          <div className="flex justify-end animate-fade-in">
             <button 
               onClick={() => {
                 setSearch('');
                 setStatus('');
                 setCategory('');
                 setPagination(prev => ({ ...prev, page: 1 }));
-                // Reset search bar internal state handled automatically via value if controlled, 
-                // but since SearchBar is uncontrolled with debounce, we need to handle its internal state or remount.
-                // Simple workaround for this demo is just clearing filters.
               }}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors focus-ring rounded px-1"
             >
               Clear Filters
             </button>
@@ -178,53 +230,71 @@ const VendorList = () => {
         )}
       </div>
 
-      {loading ? (
-        <Loader rows={8} />
-      ) : error ? (
+      {error ? (
         <EmptyState 
           title="System Error" 
           message={error}
           actionLabel="Try Again"
           onAction={fetchVendors}
         />
-      ) : vendors.length > 0 ? (
-        <div className="flex flex-col">
-          <VendorTable vendors={vendors} onDeleteClick={handleDeleteClick} />
-          <Pagination 
-            currentPage={pagination.page} 
-            totalPages={pagination.totalPages} 
-            onPageChange={handlePageChange} 
-          />
-        </div>
       ) : (
-        <EmptyState 
-          title="No vendors found" 
-          message="We couldn't find any vendors matching your criteria."
-          actionLabel="Create Vendor"
-          onAction={() => navigate('/vendors/new')}
-        />
+        <div className="flex flex-col gap-4">
+          <Table 
+            columns={vendorColumns}
+            data={vendors}
+            isLoading={loading}
+            loadingRows={5}
+            emptyState={
+              <EmptyState 
+                title="No vendors found" 
+                message="We couldn't find any vendors matching your criteria. Try adjusting your filters or add a new vendor."
+                icon={Users}
+                actionLabel="Create Vendor"
+                onAction={() => navigate('/vendors/new')}
+                secondaryActionLabel={(search || status || category) ? "Clear Filters" : undefined}
+                onSecondaryAction={(search || status || category) ? () => {
+                  setSearch('');
+                  setStatus('');
+                  setCategory('');
+                  setPagination(prev => ({ ...prev, page: 1 }));
+                } : undefined}
+              />
+            }
+          />
+          {!loading && vendors.length > 0 && (
+            <Pagination 
+              currentPage={pagination.page} 
+              totalPages={pagination.totalPages} 
+              onPageChange={handlePageChange} 
+            />
+          )}
+        </div>
       )}
 
       <Modal
         isOpen={deleteModalOpen}
         onClose={() => !isDeleting && setDeleteModalOpen(false)}
         title="Delete Vendor"
+        size="sm"
         actions={
           <>
-            <Button variant="ghost" onClick={() => setDeleteModalOpen(false)} disabled={isDeleting}>
+            <Button variant="secondary" onClick={() => setDeleteModalOpen(false)} disabled={isDeleting}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmDelete} disabled={isDeleting}>
-              {isDeleting ? 'Deleting...' : 'Delete Vendor'}
+            <Button variant="danger" onClick={handleConfirmDelete} isLoading={isDeleting}>
+              Delete Vendor
             </Button>
           </>
         }
       >
-        <p>Are you sure you want to delete the vendor <strong>{vendorToDelete?.companyName}</strong>?</p>
-        <p className="mt-2 text-sm text-slate-500">This action cannot be undone and will permanently remove the vendor data from the system.</p>
+        <p className="text-sm">Are you sure you want to delete <strong>{vendorToDelete?.companyName}</strong>?</p>
+        <p className="mt-3 text-sm text-surface-500 bg-surface-50 p-3 rounded-md border border-border">
+          This action cannot be undone and will permanently remove all associated vendor data.
+        </p>
       </Modal>
     </div>
   );
 };
 
 export default VendorList;
+

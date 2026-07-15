@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getPurchaseRequests, approvePurchaseRequest, rejectPurchaseRequest } from '../../../api/purchaseRequest.api';
 import PurchaseRequestTable from '../components/PurchaseRequestTable';
@@ -7,24 +7,22 @@ import ApprovalDialog from '../components/ApprovalDialog';
 import RejectDialog from '../components/RejectDialog';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/common/Pagination';
-import Loader from '../../../components/common/Loader';
 import EmptyState from '../../../components/common/EmptyState';
 import { ClipboardCheck, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 const SummaryCard = ({ title, value, icon: Icon, colorClass }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 flex items-center">
-    <div className={`p-3 rounded-full ${colorClass} bg-opacity-10 mr-4`}>
+  <div className="bg-white rounded-xl shadow-sm border border-border p-5 flex items-center group hover:shadow-md transition-shadow duration-300">
+    <div className={`p-3 rounded-full ${colorClass} bg-opacity-10 mr-4 ring-1 ring-inset ${colorClass.replace('text-', 'ring-').replace('500', '500/20').replace('600', '600/20')} group-hover:scale-110 transition-transform duration-300`}>
       <Icon size={24} className={colorClass} />
     </div>
     <div>
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+      <p className="text-sm font-medium text-surface-500">{title}</p>
+      <h3 className="text-2xl font-bold text-surface-900 tracking-tight">{value}</h3>
     </div>
   </div>
 );
 
 const ManagerApprovalQueue = () => {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -116,20 +114,20 @@ const ManagerApprovalQueue = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Approval Queue</h1>
-        <p className="text-sm text-slate-500 mt-1">Review and action pending purchase requests.</p>
+        <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Approval Queue</h1>
+        <p className="text-sm text-surface-500 mt-1">Review and action pending purchase requests.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard title="Total Pending" value={totalPending} icon={Clock} colorClass="text-blue-600" />
-        <SummaryCard title="Requires Action" value={totalPending} icon={ClipboardCheck} colorClass="text-orange-500" />
-        <SummaryCard title="Approved Today" value="--" icon={CheckCircle} colorClass="text-emerald-500" />
-        <SummaryCard title="Rejected Today" value="--" icon={XCircle} colorClass="text-red-500" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <SummaryCard title="Total Pending" value={totalPending} icon={Clock} colorClass="text-primary-600" />
+        <SummaryCard title="Requires Action" value={totalPending} icon={ClipboardCheck} colorClass="text-warning-600" />
+        <SummaryCard title="Approved Today" value="--" icon={CheckCircle} colorClass="text-success-600" />
+        <SummaryCard title="Rejected Today" value="--" icon={XCircle} colorClass="text-error-600" />
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+      <div className="bg-white p-5 rounded-xl shadow-sm border border-border">
         <div className="max-w-md">
           <SearchBar 
             placeholder="Search by request number, title..." 
@@ -139,24 +137,29 @@ const ManagerApprovalQueue = () => {
         </div>
       </div>
 
-      {loading ? (
-        <Loader rows={8} />
-      ) : error ? (
+      {error ? (
         <EmptyState title="System Error" message={error} actionLabel="Try Again" onAction={fetchPendingPRs} />
-      ) : requests.length > 0 ? (
-        <div className="flex flex-col">
+      ) : (
+        <div className="flex flex-col gap-4">
           <PurchaseRequestTable 
             purchaseRequests={requests} 
+            isLoading={loading}
             onApproveClick={(pr) => { setSelectedPr(pr); setApproveModalOpen(true); }}
             onRejectClick={(pr) => { setSelectedPr(pr); setRejectModalOpen(true); }}
           />
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          {!loading && requests.length > 0 && (
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          )}
+          {!loading && requests.length === 0 && (
+            <EmptyState 
+              title={search ? "No matches found" : "No pending approvals"} 
+              message={search ? "We couldn't find any pending requests matching your search." : "You're all caught up! There are no purchase requests waiting for your approval right now."}
+              icon={CheckCircle}
+              actionLabel={search ? "Clear Search" : undefined}
+              onAction={search ? () => handleSearch('') : undefined}
+            />
+          )}
         </div>
-      ) : (
-        <EmptyState 
-          title="No pending approvals" 
-          message="You're all caught up! There are no purchase requests waiting for your approval right now."
-        />
       )}
 
       <ApprovalDialog
@@ -178,3 +181,4 @@ const ManagerApprovalQueue = () => {
 };
 
 export default ManagerApprovalQueue;
+

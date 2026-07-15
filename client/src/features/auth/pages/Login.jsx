@@ -19,20 +19,13 @@ const Login = () => {
     try {
       setIsSubmitting(true);
       
-      // Attempt login via API if it exists, otherwise mock it for now
-      let token = "mock_token_for_now";
-      let user = { role: "Manager", fullName: "Demo User" };
-      
-      if (typeof login === 'function') {
-        const res = await login(formData);
-        if (res.success) {
-            token = res.data.token;
-            user = res.data.user;
-        }
+      const res = await login(formData);
+      if (res.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+      } else {
+        throw new Error('Login failed');
       }
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
       
       toast.success('Login successful');
       navigate('/');

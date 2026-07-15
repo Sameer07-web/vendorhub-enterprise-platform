@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { getRFQs, sendRFQ, closeRFQ, cancelRFQ } from '../../../api/rfq.api';
 import RFQTable from '../components/RFQTable';
 import { SendRFQDialog, CloseRFQDialog, CancelRFQDialog } from '../components/RFQDialogs';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/common/Pagination';
-import Loader from '../../../components/common/Loader';
 import EmptyState from '../../../components/common/EmptyState';
 import Button from '../../../components/common/Button';
+import Select from '../../../components/common/Select';
 import { canCreateRFQ } from '../../../utils/permissions';
 
 const RFQList = () => {
@@ -126,22 +126,30 @@ const RFQList = () => {
     }
   };
 
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'SENT', label: 'Sent' },
+    { value: 'PARTIALLY_RESPONDED', label: 'Partially Responded' },
+    { value: 'CLOSED', label: 'Closed' },
+    { value: 'CANCELLED', label: 'Cancelled' }
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Request For Quotations</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage vendor quotation requests and responses.</p>
+          <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Request For Quotations</h1>
+          <p className="text-sm text-surface-500 mt-1">Manage vendor quotation requests and responses.</p>
         </div>
         {canCreateRFQ() && (
-          <Button variant="primary" onClick={() => navigate('/rfqs/new')}>
-            <Plus size={16} className="mr-2" />
+          <Button variant="primary" onClick={() => navigate('/rfqs/new')} className="shadow-sm" startIcon={Plus}>
             Create RFQ
           </Button>
         )}
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4">
+      <div className="bg-white p-5 rounded-lg shadow-sm border border-border flex flex-col sm:flex-row gap-4">
         <div className="flex-1 max-w-md">
           <SearchBar 
             placeholder="Search by RFQ number, title, or PR..." 
@@ -149,51 +157,49 @@ const RFQList = () => {
             initialValue={search}
           />
         </div>
-        <div className="w-full sm:w-48">
-          <select
+        <div className="w-full sm:w-64">
+          <Select
+            options={statusOptions}
             value={status}
             onChange={handleFilterChange}
-            className="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-          >
-            <option value="">All Statuses</option>
-            <option value="DRAFT">Draft</option>
-            <option value="SENT">Sent</option>
-            <option value="PARTIALLY_RESPONDED">Partially Responded</option>
-            <option value="CLOSED">Closed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+            className="w-full"
+            label=""
+          />
         </div>
       </div>
 
-      {loading ? (
-        <Loader rows={8} />
-      ) : error ? (
+      {error ? (
         <EmptyState title="System Error" message={error} actionLabel="Try Again" onAction={fetchRFQList} />
-      ) : rfqs.length > 0 ? (
-        <div className="flex flex-col">
+      ) : (
+        <div className="flex flex-col gap-4">
           <RFQTable 
             rfqs={rfqs} 
+            isLoading={loading}
             onSendClick={(rfq) => { setSelectedRfq(rfq); setSendModalOpen(true); }}
             onCloseClick={(rfq) => { setSelectedRfq(rfq); setCloseModalOpen(true); }}
             onCancelClick={(rfq) => { setSelectedRfq(rfq); setCancelModalOpen(true); }}
           />
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          {!loading && rfqs.length > 0 && (
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          )}
+          {!loading && rfqs.length === 0 && (
+            <EmptyState 
+              title="No RFQs Found" 
+              message={search || status ? "No RFQs match your current filters." : "There are no Request For Quotations in the system."}
+              icon={FileText}
+              actionLabel={search || status ? "Clear Filters" : (canCreateRFQ() ? "Create First RFQ" : undefined)}
+              onAction={() => {
+                if (search || status) {
+                  setSearch('');
+                  setStatus('');
+                  updateUrlParams({ search: '', status: '', page: 1 });
+                } else if (canCreateRFQ()) {
+                  navigate('/rfqs/new');
+                }
+              }}
+            />
+          )}
         </div>
-      ) : (
-        <EmptyState 
-          title="No RFQs Found" 
-          message={search || status ? "No RFQs match your current filters." : "There are no Request For Quotations in the system."}
-          actionLabel={search || status ? "Clear Filters" : (canCreateRFQ() ? "Create First RFQ" : null)}
-          onAction={() => {
-            if (search || status) {
-              setSearch('');
-              setStatus('');
-              updateUrlParams({ search: '', status: '', page: 1 });
-            } else if (canCreateRFQ()) {
-              navigate('/rfqs/new');
-            }
-          }}
-        />
       )}
 
       {/* Dialogs */}

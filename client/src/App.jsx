@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 
 import AdminLayout from './components/layout/AdminLayout';
+import Dashboard from './features/dashboard/pages/Dashboard';
 import VendorList from './features/vendors/pages/VendorList';
 import CreateVendor from './features/vendors/pages/CreateVendor';
 import EditVendor from './features/vendors/pages/EditVendor';
@@ -51,7 +52,7 @@ function App() {
             <AdminLayout />
           </PrivateRoute>
         }>
-          <Route index element={<Navigate to="/vendors" replace />} />
+          <Route index element={<Dashboard />} />
           
           <Route path="vendors" element={<VendorList />} />
           <Route path="vendors/new" element={<CreateVendor />} />

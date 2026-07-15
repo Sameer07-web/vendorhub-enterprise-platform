@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import { Plus, ShoppingCart } from 'lucide-react';
 import { getPurchaseRequests, submitPurchaseRequest, approvePurchaseRequest, rejectPurchaseRequest, deletePurchaseRequest } from '../../../api/purchaseRequest.api';
 import PurchaseRequestTable from '../components/PurchaseRequestTable';
 import ApprovalDialog from '../components/ApprovalDialog';
@@ -10,7 +10,6 @@ import SearchBar from '../../../components/common/SearchBar';
 import Select from '../../../components/common/Select';
 import Button from '../../../components/common/Button';
 import Pagination from '../../../components/common/Pagination';
-import Loader from '../../../components/common/Loader';
 import EmptyState from '../../../components/common/EmptyState';
 import Modal from '../../../components/common/Modal';
 import { PR_STATUS, PR_PRIORITY, DEPARTMENTS } from '../../../utils/constants';
@@ -41,11 +40,10 @@ const PurchaseRequestList = () => {
   const [selectedPr, setSelectedPr] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Sync state to URL when changed (Debounced internally for search by the SearchBar itself passing via onSearch, but we update URL directly)
+  // Sync state to URL when changed
   const updateUrlParams = useCallback((newParams) => {
     const current = Object.fromEntries(searchParams);
     const updated = { ...current, ...newParams };
-    // Remove empty params
     Object.keys(updated).forEach(key => {
       if (!updated[key]) delete updated[key];
     });
@@ -121,7 +119,7 @@ const PurchaseRequestList = () => {
       fetchPRs();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to submit request');
-      setSubmitModalOpen(false); // Can close on submit failure or keep open. User spec: Keep open on approval failure. Let's close on submit.
+      setSubmitModalOpen(false);
     } finally {
       setIsProcessing(false);
     }
@@ -158,7 +156,6 @@ const PurchaseRequestList = () => {
       fetchPRs();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to approve request');
-      // Per spec: "Approval action failure Keep dialog open. Display error."
     } finally {
       setIsProcessing(false);
     }
@@ -191,21 +188,20 @@ const PurchaseRequestList = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Purchase Requests</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage and track organizational purchase requests.</p>
+          <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Purchase Requests</h1>
+          <p className="text-sm text-surface-500 mt-1">Manage and track organizational purchase requests.</p>
         </div>
         {canCreatePurchaseRequest() && (
-          <Button onClick={() => navigate('/purchase-requests/new')} variant="primary" className="shrink-0">
-            <Plus size={18} className="mr-2" />
+          <Button onClick={() => navigate('/purchase-requests/new')} variant="primary" className="shrink-0 shadow-sm" startIcon={Plus}>
             Create Request
           </Button>
         )}
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 space-y-4">
+      <div className="bg-white p-5 rounded-lg shadow-sm border border-border space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="md:col-span-1">
             <SearchBar 
@@ -226,52 +222,63 @@ const PurchaseRequestList = () => {
             value={priority} 
             onChange={(e) => handleFilterChange('priority', e.target.value)} 
             className="w-full"
+            label=""
           />
           <Select 
             options={deptOptions} 
             value={department} 
             onChange={(e) => handleFilterChange('department', e.target.value)} 
             className="w-full"
+            label=""
           />
           <Select 
             options={sortOptions} 
             value={sort} 
             onChange={(e) => handleFilterChange('sort', e.target.value)} 
             className="w-full"
+            label=""
           />
         </div>
 
         {(search || status || priority || department) && (
-          <div className="flex justify-end">
-            <button onClick={clearFilters} className="text-sm text-blue-600 hover:text-blue-800">
+          <div className="flex justify-end animate-fade-in">
+            <button 
+              onClick={clearFilters}
+              className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors focus-ring rounded px-1"
+            >
               Clear Filters
             </button>
           </div>
         )}
       </div>
 
-      {loading ? (
-        <Loader rows={8} />
-      ) : error ? (
+      {error ? (
         <EmptyState title="System Error" message={error} actionLabel="Try Again" onAction={fetchPRs} />
-      ) : requests.length > 0 ? (
-        <div className="flex flex-col">
+      ) : (
+        <div className="flex flex-col gap-4">
           <PurchaseRequestTable 
-            purchaseRequests={requests} 
+            purchaseRequests={requests}
+            isLoading={loading}
             onSubmitClick={(pr) => { setSelectedPr(pr); setSubmitModalOpen(true); }}
             onApproveClick={(pr) => { setSelectedPr(pr); setApproveModalOpen(true); }}
             onRejectClick={(pr) => { setSelectedPr(pr); setRejectModalOpen(true); }}
             onDeleteClick={isAdmin() ? (pr) => { setSelectedPr(pr); setDeleteModalOpen(true); } : undefined}
           />
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          {!loading && requests.length > 0 && (
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
+          )}
+          {!loading && requests.length === 0 && (
+            <EmptyState 
+              title="No purchase requests found" 
+              message="We couldn't find any purchase requests matching your criteria."
+              icon={ShoppingCart}
+              actionLabel={canCreatePurchaseRequest() ? "Create Purchase Request" : undefined}
+              onAction={canCreatePurchaseRequest() ? () => navigate('/purchase-requests/new') : undefined}
+              secondaryActionLabel={(search || status || priority || department) ? "Clear Filters" : undefined}
+              onSecondaryAction={(search || status || priority || department) ? clearFilters : undefined}
+            />
+          )}
         </div>
-      ) : (
-        <EmptyState 
-          title="No purchase requests found" 
-          message="We couldn't find any purchase requests matching your criteria."
-          actionLabel="Create Purchase Request"
-          onAction={() => navigate('/purchase-requests/new')}
-        />
       )}
 
       {/* Delete Modal */}
@@ -281,15 +288,17 @@ const PurchaseRequestList = () => {
         title="Delete Purchase Request"
         actions={
           <>
-            <Button variant="ghost" onClick={() => setDeleteModalOpen(false)} disabled={isProcessing}>Cancel</Button>
-            <Button variant="danger" onClick={handleDeleteConfirm} disabled={isProcessing}>
-              {isProcessing ? 'Deleting...' : 'Delete Request'}
+            <Button variant="secondary" onClick={() => setDeleteModalOpen(false)} disabled={isProcessing}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeleteConfirm} isLoading={isProcessing}>
+              Delete Request
             </Button>
           </>
         }
       >
-        <p className="text-slate-700">Are you sure you want to delete <strong>{selectedPr?.requestNumber}</strong>?</p>
-        <p className="mt-2 text-sm text-orange-600 font-medium">This action can be restored by an administrator.</p>
+        <p className="text-sm">Are you sure you want to delete <strong>{selectedPr?.requestNumber}</strong>?</p>
+        <p className="mt-3 text-sm text-surface-500 bg-surface-50 p-3 rounded-md border border-border">
+          This action can be restored by an administrator.
+        </p>
       </Modal>
 
       {/* Submit Modal */}
@@ -299,14 +308,14 @@ const PurchaseRequestList = () => {
         title="Submit Purchase Request"
         actions={
           <>
-            <Button variant="ghost" onClick={() => setSubmitModalOpen(false)} disabled={isProcessing}>Cancel</Button>
-            <Button variant="primary" onClick={handleSubmitConfirm} disabled={isProcessing}>
-              {isProcessing ? 'Submitting...' : 'Submit for Approval'}
+            <Button variant="secondary" onClick={() => setSubmitModalOpen(false)} disabled={isProcessing}>Cancel</Button>
+            <Button variant="primary" onClick={handleSubmitConfirm} isLoading={isProcessing}>
+              Submit for Approval
             </Button>
           </>
         }
       >
-        <p>Are you sure you want to submit <strong>{selectedPr?.requestNumber}</strong> for approval? You will no longer be able to edit it.</p>
+        <p className="text-sm">Are you sure you want to submit <strong>{selectedPr?.requestNumber}</strong> for approval? You will no longer be able to edit it.</p>
       </Modal>
 
       {/* Approve / Reject Dialogs */}
@@ -329,3 +338,4 @@ const PurchaseRequestList = () => {
 };
 
 export default PurchaseRequestList;
+

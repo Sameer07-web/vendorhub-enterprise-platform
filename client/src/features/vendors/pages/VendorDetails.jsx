@@ -39,11 +39,11 @@ const VendorDetails = () => {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-200">
+        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
           <h3 className="font-semibold text-lg mb-1">Error</h3>
           <p>{error}</p>
-          <button onClick={() => navigate('/vendors')} className="mt-4 text-sm font-medium hover:underline">
-            &larr; Back to Vendors
+          <button onClick={() => navigate('/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
+            <ArrowLeft size={16} /> Back to Vendors
           </button>
         </div>
       </div>
@@ -55,22 +55,22 @@ const VendorDetails = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate('/vendors')}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors shrink-0 focus-ring"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Vendor Details</h1>
-            <p className="text-sm text-slate-500 mt-1">Detailed information about the vendor.</p>
+            <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Vendor Details</h1>
+            <p className="text-sm text-surface-500 mt-1">Detailed profile and business information.</p>
           </div>
         </div>
-        <Button onClick={() => navigate(`/vendors/${id}/edit`)} variant="secondary">
-          <Edit size={18} className="mr-2" />
+        <Button onClick={() => navigate(`/vendors/${id}/edit`)} variant="secondary" className="shrink-0 bg-white shadow-sm">
+          <Edit size={16} className="mr-2" />
           Edit Vendor
         </Button>
       </div>

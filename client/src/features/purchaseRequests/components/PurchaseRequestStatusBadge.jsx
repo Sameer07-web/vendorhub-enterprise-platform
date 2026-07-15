@@ -1,12 +1,27 @@
-import { getStatusColor } from '../../../utils/statusColors';
+import Badge from '../../../components/common/Badge';
 
 const PurchaseRequestStatusBadge = ({ status }) => {
-  const colorClasses = getStatusColor(status);
-  
+  const getVariant = (status) => {
+    switch (status) {
+      case 'APPROVED':
+        return 'success';
+      case 'DRAFT':
+        return 'secondary';
+      case 'PENDING_APPROVAL':
+        return 'warning';
+      case 'REJECTED':
+        return 'danger';
+      case 'COMPLETED':
+        return 'primary';
+      default:
+        return 'default';
+    }
+  };
+
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${colorClasses}`}>
+    <Badge variant={getVariant(status)}>
       {status?.replace('_', ' ') || 'UNKNOWN'}
-    </span>
+    </Badge>
   );
 };
 
