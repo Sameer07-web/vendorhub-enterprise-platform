@@ -29,7 +29,7 @@ const PurchaseRequestTable = ({
       label: 'Request',
       render: (pr) => (
         <div className="flex flex-col max-w-[250px]">
-          <Link to={`/purchase-requests/${pr._id}`} className="text-sm font-semibold text-surface-900 hover:text-primary-600 transition-colors truncate focus-ring rounded" title={pr.title}>
+          <Link to={`/app/purchase-requests/${pr._id}`} className="text-sm font-semibold text-surface-900 hover:text-primary-600 transition-colors truncate focus-ring rounded" title={pr.title}>
             {pr.title}
           </Link>
           <span className="text-xs text-surface-500 font-medium mt-0.5">{pr.requestNumber}</span>
@@ -97,7 +97,7 @@ const PurchaseRequestTable = ({
       render: (pr) => (
         <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-30 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity duration-150">
           <Link 
-            to={`/purchase-requests/${pr._id}`} 
+            to={`/app/purchase-requests/${pr._id}`} 
             className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors focus-ring"
             title="View Details"
           >
@@ -106,7 +106,7 @@ const PurchaseRequestTable = ({
 
           {canEditPurchaseRequest(pr) && (
             <Link 
-              to={`/purchase-requests/${pr._id}/edit`} 
+              to={`/app/purchase-requests/${pr._id}/edit`} 
               className="p-1.5 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded-md transition-colors focus-ring"
               title="Edit Draft"
             >

@@ -131,14 +131,14 @@ const RFQForm = ({ initialData, isReadOnly = false, mode = 'create' }) => {
       if (mode === 'create') {
         const response = await createRFQ(formData);
         toast.success('RFQ created successfully');
-        navigate(`/rfqs/${response.data._id}`);
+        navigate(`/app/rfqs/${response.data._id}`);
       } else {
         // Update
         const payload = { ...formData };
         delete payload.purchaseRequest; // Cannot update PR reference
         const response = await updateRFQ(initialData._id, payload);
         toast.success('RFQ updated successfully');
-        navigate(`/rfqs/${response.data._id}`);
+        navigate(`/app/rfqs/${response.data._id}`);
       }
     } catch (err) {
       if (err?.response?.status === 409) {

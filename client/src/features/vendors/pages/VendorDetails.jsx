@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Edit } from 'lucide-react';
+import { Edit } from 'lucide-react';
 import { getVendorById } from '../../../api/vendor.api';
 import VendorCard from '../components/VendorCard';
 import Loader from '../../../components/common/Loader';
 import Button from '../../../components/common/Button';
+import PageHeader from '../../../components/common/PageHeader';
+import EmptyState from '../../../components/common/EmptyState';
 
 const VendorDetails = () => {
   const { id } = useParams();
@@ -39,13 +41,12 @@ const VendorDetails = () => {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
-          <h3 className="font-semibold text-lg mb-1">Error</h3>
-          <p>{error}</p>
-          <button onClick={() => navigate('/app/vendors')} className="mt-4 text-sm font-medium hover:underline flex items-center gap-1 focus-ring rounded p-1">
-            <ArrowLeft size={16} /> Back to Vendors
-          </button>
-        </div>
+        <EmptyState 
+          title="Vendor Not Found" 
+          message={error}
+          actionLabel="Back to Vendors"
+          onAction={() => navigate('/app/vendors')}
+        />
       </div>
     );
   }
@@ -56,25 +57,17 @@ const VendorDetails = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/app/vendors')}
-            className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors shrink-0 focus-ring"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Vendor Details</h1>
-            <p className="text-sm text-surface-500 mt-1">Detailed profile and business information.</p>
-          </div>
-        </div>
-        <Button onClick={() => navigate(`/vendors/${id}/edit`)} variant="secondary" className="shrink-0 bg-white shadow-sm">
-          <Edit size={16} className="mr-2" />
-          Edit Vendor
-        </Button>
-      </div>
-
+      <PageHeader 
+        title="Vendor Details"
+        description="Detailed profile and business information."
+        backHref="/app/vendors"
+        action={
+          <Button onClick={() => navigate(`/app/vendors/${id}/edit`)} variant="secondary" className="shrink-0 bg-white shadow-sm">
+            <Edit size={16} className="mr-2" />
+            Edit Vendor
+          </Button>
+        }
+      />
       <VendorCard vendor={vendor} />
     </div>
   );

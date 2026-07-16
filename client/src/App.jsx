@@ -1,36 +1,47 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { Toaster } from 'react-hot-toast';
 
 import AdminLayout from './components/layout/AdminLayout';
 import PublicLayout from './features/public/components/PublicLayout';
-import LandingPage from './features/public/pages/LandingPage';
-import Architecture from './features/public/pages/Architecture';
-import NotFound from './features/public/pages/NotFound';
-import Forbidden from './features/public/pages/Forbidden';
-import Dashboard from './features/dashboard/pages/Dashboard';
-import VendorList from './features/vendors/pages/VendorList';
-import CreateVendor from './features/vendors/pages/CreateVendor';
-import EditVendor from './features/vendors/pages/EditVendor';
-import VendorDetails from './features/vendors/pages/VendorDetails';
-import PurchaseRequestList from './features/purchaseRequests/pages/PurchaseRequestList';
-import CreatePurchaseRequest from './features/purchaseRequests/pages/CreatePurchaseRequest';
-import EditPurchaseRequest from './features/purchaseRequests/pages/EditPurchaseRequest';
-import PurchaseRequestDetails from './features/purchaseRequests/pages/PurchaseRequestDetails';
-import ManagerApprovalQueue from './features/purchaseRequests/pages/ManagerApprovalQueue';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import Loader from './components/common/Loader';
 
-import RFQList from './features/rfq/pages/RFQList';
-import CreateRFQ from './features/rfq/pages/CreateRFQ';
-import EditRFQ from './features/rfq/pages/EditRFQ';
-import RFQDetails from './features/rfq/pages/RFQDetails';
-import Login from './features/auth/pages/Login';
-import Register from './features/auth/pages/Register';
-import ForgotPassword from './features/auth/pages/ForgotPassword';
-import ResetPassword from './features/auth/pages/ResetPassword';
-import Profile from './features/profile/pages/Profile';
-import Settings from './features/settings/pages/Settings';
-import Help from './features/help/pages/Help';
+// Public/Marketing routes (Keep landing page fast)
+import LandingPage from './features/public/pages/LandingPage';
+const Architecture = lazy(() => import('./features/public/pages/Architecture'));
+const NotFound = lazy(() => import('./features/public/pages/NotFound'));
+const Forbidden = lazy(() => import('./features/public/pages/Forbidden'));
+
+// Auth routes
+const Login = lazy(() => import('./features/auth/pages/Login'));
+const Register = lazy(() => import('./features/auth/pages/Register'));
+const ForgotPassword = lazy(() => import('./features/auth/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./features/auth/pages/ResetPassword'));
+
+// Protected Routes (Lazy loaded)
+const Dashboard = lazy(() => import('./features/dashboard/pages/Dashboard'));
+const VendorList = lazy(() => import('./features/vendors/pages/VendorList'));
+const CreateVendor = lazy(() => import('./features/vendors/pages/CreateVendor'));
+const EditVendor = lazy(() => import('./features/vendors/pages/EditVendor'));
+const VendorDetails = lazy(() => import('./features/vendors/pages/VendorDetails'));
+
+const PurchaseRequestList = lazy(() => import('./features/purchaseRequests/pages/PurchaseRequestList'));
+const CreatePurchaseRequest = lazy(() => import('./features/purchaseRequests/pages/CreatePurchaseRequest'));
+const EditPurchaseRequest = lazy(() => import('./features/purchaseRequests/pages/EditPurchaseRequest'));
+const PurchaseRequestDetails = lazy(() => import('./features/purchaseRequests/pages/PurchaseRequestDetails'));
+const ManagerApprovalQueue = lazy(() => import('./features/purchaseRequests/pages/ManagerApprovalQueue'));
+
+const RFQList = lazy(() => import('./features/rfq/pages/RFQList'));
+const CreateRFQ = lazy(() => import('./features/rfq/pages/CreateRFQ'));
+const EditRFQ = lazy(() => import('./features/rfq/pages/EditRFQ'));
+const RFQDetails = lazy(() => import('./features/rfq/pages/RFQDetails'));
+const QuoteComparison = lazy(() => import('./features/rfq/pages/QuoteComparison'));
+
+const Profile = lazy(() => import('./features/profile/pages/Profile'));
+const Settings = lazy(() => import('./features/settings/pages/Settings'));
+const Help = lazy(() => import('./features/help/pages/Help'));
 
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
@@ -46,72 +57,83 @@ const Placeholder = ({ title }) => (
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) {
-    // Redirect to login if token is missing
     return <Navigate to="/login" replace />;
   }
   return children;
 };
+
+// Route loader
+const RouteLoader = () => (
+  <div className="flex items-center justify-center h-full w-full min-h-[50vh]">
+    <Loader />
+  </div>
+);
 
 function App() {
   return (
     <ThemeProvider>
       <Router>
         <Toaster position="top-right" />
-      <Routes>
-        {/* Public Marketing Routes */}
-        <Route path="/" element={<PublicLayout />}>
-          <Route index element={<LandingPage />} />
-          <Route path="architecture" element={<Architecture />} />
-          <Route path="features" element={<Placeholder title="Features" />} />
-          <Route path="security" element={<Placeholder title="Security" />} />
-          <Route path="docs" element={<Placeholder title="Documentation" />} />
-          <Route path="api" element={<Placeholder title="API Reference" />} />
-          <Route path="contact" element={<Placeholder title="Contact Support" />} />
-          <Route path="privacy" element={<Placeholder title="Privacy Policy" />} />
-          <Route path="terms" element={<Placeholder title="Terms of Service" />} />
-        </Route>
+        <ErrorBoundary>
+          <Suspense fallback={<RouteLoader />}>
+            <Routes>
+              {/* Public Marketing Routes */}
+              <Route path="/" element={<PublicLayout />}>
+                <Route index element={<LandingPage />} />
+                <Route path="architecture" element={<Architecture />} />
+                <Route path="features" element={<Placeholder title="Features" />} />
+                <Route path="security" element={<Placeholder title="Security" />} />
+                <Route path="docs" element={<Placeholder title="Documentation" />} />
+                <Route path="api" element={<Placeholder title="API Reference" />} />
+                <Route path="contact" element={<Placeholder title="Contact Support" />} />
+                <Route path="privacy" element={<Placeholder title="Privacy Policy" />} />
+                <Route path="terms" element={<Placeholder title="Terms of Service" />} />
+              </Route>
 
-        {/* Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        
-        {/* Protected Dashboard Routes */}
-        <Route path="/app" element={
-          <PrivateRoute>
-            <AdminLayout />
-          </PrivateRoute>
-        }>
-          <Route index element={<Dashboard />} />
-          
-          <Route path="vendors" element={<VendorList />} />
-          <Route path="vendors/new" element={<CreateVendor />} />
-          <Route path="vendors/:id" element={<VendorDetails />} />
-          <Route path="vendors/:id/edit" element={<EditVendor />} />
-          
-          <Route path="purchase-requests" element={<PurchaseRequestList />} />
-          <Route path="purchase-requests/new" element={<CreatePurchaseRequest />} />
-          <Route path="purchase-requests/approval" element={<ManagerApprovalQueue />} />
-          <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
-          <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
-          
-          <Route path="rfqs" element={<RFQList />} />
-          <Route path="rfqs/new" element={<CreateRFQ />} />
-          <Route path="rfqs/:id" element={<RFQDetails />} />
-          <Route path="rfqs/:id/edit" element={<EditRFQ />} />
-          
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="help" element={<Help />} />
-          
-          <Route path="purchase-orders" element={<Placeholder title="Purchase Orders" />} />
-        </Route>
+              {/* Auth Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              
+              {/* Protected Dashboard Routes */}
+              <Route path="/app" element={
+                <PrivateRoute>
+                  <AdminLayout />
+                </PrivateRoute>
+              }>
+                <Route index element={<Dashboard />} />
+                
+                <Route path="vendors" element={<VendorList />} />
+                <Route path="vendors/new" element={<CreateVendor />} />
+                <Route path="vendors/:id" element={<VendorDetails />} />
+                <Route path="vendors/:id/edit" element={<EditVendor />} />
+                
+                <Route path="purchase-requests" element={<PurchaseRequestList />} />
+                <Route path="purchase-requests/new" element={<CreatePurchaseRequest />} />
+                <Route path="purchase-requests/approval" element={<ManagerApprovalQueue />} />
+                <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
+                <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
+                
+                <Route path="rfqs" element={<RFQList />} />
+                <Route path="rfqs/new" element={<CreateRFQ />} />
+                <Route path="rfqs/:id" element={<RFQDetails />} />
+                <Route path="rfqs/:id/edit" element={<EditRFQ />} />
+                <Route path="rfqs/:id/compare" element={<QuoteComparison />} />
+                
+                <Route path="profile" element={<Profile />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="help" element={<Help />} />
+                
+                <Route path="purchase-orders" element={<Placeholder title="Purchase Orders" />} />
+              </Route>
 
-        {/* Error Pages */}
-        <Route path="/403" element={<Forbidden />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+              {/* Error Pages */}
+              <Route path="/403" element={<Forbidden />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Router>
     </ThemeProvider>
   );

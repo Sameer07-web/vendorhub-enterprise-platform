@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import Input from '../../../components/common/Input';
 import Select from '../../../components/common/Select';
 import Button from '../../../components/common/Button';
-import { Building2, MapPin, Settings2, CheckCircle2, ChevronDown, ChevronUp, Mail, Phone, Globe, Hash } from 'lucide-react';
+import FormSection from '../../../components/common/FormSection';
+import { MapPin, CheckCircle2, Mail, Phone, Globe, Hash } from 'lucide-react';
 
 const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
   const navigate = useNavigate();
@@ -24,7 +25,6 @@ const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
   });
 
   const [errors, setErrors] = useState({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -57,7 +57,6 @@ const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
 
     setErrors(newErrors);
 
-    // Smooth scroll to first error
     if (Object.keys(newErrors).length > 0) {
       const firstErrorField = document.getElementsByName(Object.keys(newErrors)[0])[0];
       if (firstErrorField) {
@@ -85,16 +84,16 @@ const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
   };
 
   const isSuccess = (fieldName) => {
-    // If the field has value and no errors, mark as success visually
     return formData[fieldName]?.length > 0 && !errors[fieldName];
   };
 
   const categoryOptions = [
     { value: 'Raw Material', label: 'Raw Material' },
     { value: 'IT Equipment', label: 'IT Equipment' },
+    { value: 'Software', label: 'Software' },
+    { value: 'Hardware', label: 'Hardware' },
     { value: 'Office Supplies', label: 'Office Supplies' },
     { value: 'Logistics', label: 'Logistics' },
-    { value: 'Maintenance', label: 'Maintenance' },
     { value: 'Consulting', label: 'Consulting' },
     { value: 'Other', label: 'Other' },
   ];
@@ -109,88 +108,39 @@ const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-border animate-fade-in overflow-hidden">
 
-      <div className="p-6 md:p-8 space-y-10">
-
-        {/* Section: Basic Information */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-primary-50 rounded-xl text-primary-600 ring-1 ring-inset ring-primary-500/20">
-              <Building2 size={20} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-surface-900 tracking-tight">Basic Information</h3>
-              <p className="text-sm text-surface-500">Core details about the vendor.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 bg-surface-50 p-6 rounded-xl border border-border">
+      <div className="p-6 md:p-8">
+        
+        <FormSection title="Basic Information" description="Core details about the vendor.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input required label="Company Name" name="companyName" value={formData.companyName} onChange={handleChange} error={errors.companyName} success={isSuccess('companyName')} placeholder="e.g. Acme Corporation" />
-            <Input required label="GST Number" name="gstNumber" icon={Hash} value={formData.gstNumber} onChange={handleChange} error={errors.gstNumber} success={isSuccess('gstNumber')} placeholder="e.g. 22AAAAA0000A1Z5" helperText="Must be a valid 15-character GSTIN" />
+            <Input required label="GST Number" name="gstNumber" icon={Hash} value={formData.gstNumber} onChange={handleChange} error={errors.gstNumber} success={isSuccess('gstNumber')} placeholder="e.g. 22AAAAA0000A1Z5" />
             <Select required label="Vendor Category" name="vendorCategory" value={formData.vendorCategory} onChange={handleChange} options={categoryOptions} success={isSuccess('vendorCategory')} />
           </div>
-        </section>
+        </FormSection>
 
-        <hr className="border-border" />
-
-        {/* Section: Contact Information */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600 ring-1 ring-inset ring-indigo-500/20">
-              <Mail size={20} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-surface-900 tracking-tight">Contact Information</h3>
-              <p className="text-sm text-surface-500">Primary point of contact for this vendor.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 bg-surface-50 p-6 rounded-xl border border-border">
+        <FormSection title="Contact Information" description="Primary point of contact for this vendor.">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input required label="Contact Person" name="contactPerson" value={formData.contactPerson} onChange={handleChange} error={errors.contactPerson} success={isSuccess('contactPerson')} placeholder="Full Name" />
             <Input required label="Email Address" name="email" type="email" icon={Mail} value={formData.email} onChange={handleChange} error={errors.email} success={isSuccess('email')} placeholder="contact@company.com" />
             <Input required label="Phone Number" name="phone" type="tel" icon={Phone} value={formData.phone} onChange={handleChange} error={errors.phone} success={isSuccess('phone')} placeholder="+1 (555) 000-0000" />
             <Input label="Website (Optional)" name="website" icon={Globe} value={formData.website} onChange={handleChange} placeholder="https://www.company.com" />
           </div>
-        </section>
+        </FormSection>
 
-        <hr className="border-border" />
-
-        {/* Section: Progressive Disclosure - Address & Settings */}
-        <section>
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full text-left focus-ring rounded-xl p-2 -mx-2 hover:bg-surface-50 transition-colors group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-surface-100 rounded-xl text-surface-600 group-hover:bg-surface-200 transition-colors ring-1 ring-inset ring-surface-500/20">
-                <Settings2 size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-surface-900 tracking-tight">Address & Configuration</h3>
-                <p className="text-sm text-surface-500">Physical location and internal system status.</p>
-              </div>
+        <FormSection title="Address & Configuration" description="Physical location and internal system status." className="border-0 pb-0 mb-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="md:col-span-2">
+              <Input label="Street Address (Optional)" name="address" icon={MapPin} value={formData.address || ''} onChange={handleChange} placeholder="123 Corporate Blvd, Suite 400" />
             </div>
-            <div className="text-surface-400 group-hover:text-surface-600 transition-colors">
-              {showAdvanced ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+            <Input label="City (Optional)" name="city" value={formData.city || ''} onChange={handleChange} placeholder="San Francisco" />
+            <Input label="State/Province (Optional)" name="state" value={formData.state || ''} onChange={handleChange} placeholder="CA" />
+            <Input label="Country (Optional)" name="country" value={formData.country || ''} onChange={handleChange} placeholder="United States" />
+            <Input label="Postal Code (Optional)" name="postalCode" value={formData.postalCode || ''} onChange={handleChange} placeholder="94105" />
+            <div className="md:col-span-2 mt-2 pt-5 border-t border-border/50">
+              <Select label="System Status" name="status" value={formData.status} onChange={handleChange} options={statusOptions} helperText="Controls if this vendor can be selected for new Purchase Requests." />
             </div>
-          </button>
-
-          {showAdvanced && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 bg-surface-50 p-6 rounded-xl border border-border animate-slide-up">
-              <div className="md:col-span-2">
-                <Input label="Street Address (Optional)" name="address" icon={MapPin} value={formData.address || ''} onChange={handleChange} placeholder="123 Corporate Blvd, Suite 400" />
-              </div>
-              <Input label="City (Optional)" name="city" value={formData.city || ''} onChange={handleChange} placeholder="San Francisco" />
-              <Input label="State/Province (Optional)" name="state" value={formData.state || ''} onChange={handleChange} placeholder="CA" />
-              <Input label="Country (Optional)" name="country" value={formData.country || ''} onChange={handleChange} placeholder="United States" />
-              <Input label="Postal Code (Optional)" name="postalCode" value={formData.postalCode || ''} onChange={handleChange} placeholder="94105" />
-
-              <div className="md:col-span-2 mt-2 pt-6 border-t border-border/50">
-                <Select label="System Status" name="status" value={formData.status} onChange={handleChange} options={statusOptions} helperText="Controls if this vendor can be selected for new Purchase Requests." />
-              </div>
-            </div>
-          )}
-        </section>
+          </div>
+        </FormSection>
 
       </div>
 
@@ -211,4 +161,3 @@ const VendorForm = ({ initialData, onSubmit, isSubmitting }) => {
 };
 
 export default VendorForm;
-

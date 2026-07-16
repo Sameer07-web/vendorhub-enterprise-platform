@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft } from 'lucide-react';
 import PurchaseRequestForm from '../components/PurchaseRequestForm';
 import { getPurchaseRequestById, updatePurchaseRequest } from '../../../api/purchaseRequest.api';
 import Loader from '../../../components/common/Loader';
+import PageHeader from '../../../components/common/PageHeader';
+import EmptyState from '../../../components/common/EmptyState';
 import { canEditPurchaseRequest } from '../../../utils/permissions';
 
 const EditPurchaseRequest = () => {
@@ -25,7 +26,7 @@ const EditPurchaseRequest = () => {
           const pr = response.data;
           if (!canEditPurchaseRequest(pr)) {
             toast.error('You do not have permission to edit this request');
-            navigate(`/purchase-requests/${id}`);
+            navigate(`/app/purchase-requests/${id}`);
             return;
           }
           setInitialData(pr);
@@ -45,9 +46,9 @@ const EditPurchaseRequest = () => {
       setIsSubmitting(true);
       await updatePurchaseRequest(id, formData);
       toast.success('Purchase Request updated successfully');
-      navigate(`/purchase-requests/${id}`);
+      navigate(`/app/purchase-requests/${id}`);
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update Purchase Request');
+      toast.error(err?.message || 'Failed to update Purchase Request');
     } finally {
       setIsSubmitting(false);
     }
@@ -60,32 +61,23 @@ const EditPurchaseRequest = () => {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto mt-8">
-        <div className="bg-error-50 text-error-600 p-4 rounded-lg border border-error-200">
-          <h3 className="font-semibold text-lg mb-1">Error</h3>
-          <p>{error}</p>
-          <button onClick={() => navigate('/app/purchase-requests')} className="mt-4 text-sm font-medium hover:underline">
-            &larr; Back to Requests
-          </button>
-        </div>
+        <EmptyState 
+          title="Purchase Request Not Found" 
+          message={error}
+          actionLabel="Back to Requests"
+          onAction={() => navigate('/app/purchase-requests')}
+        />
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4">
-        <button 
-          onClick={() => navigate(-1)}
-          className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-surface-900">Edit Purchase Request</h1>
-          <p className="text-sm text-surface-500 mt-1">Update draft information for {initialData?.requestNumber}.</p>
-        </div>
-      </div>
+      <PageHeader 
+        title="Edit Purchase Request"
+        description={`Update draft information for ${initialData?.requestNumber}.`}
+        backHref="/app/purchase-requests"
+      />
 
       {initialData && (
         <PurchaseRequestForm 

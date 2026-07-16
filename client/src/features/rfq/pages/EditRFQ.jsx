@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft } from 'lucide-react';
 import { getRFQById } from '../../../api/rfq.api';
 import RFQForm from '../components/RFQForm';
 import Loader from '../../../components/common/Loader';
 import EmptyState from '../../../components/common/EmptyState';
+import PageHeader from '../../../components/common/PageHeader';
 
 const EditRFQ = () => {
   const { id } = useParams();
@@ -20,9 +20,9 @@ const EditRFQ = () => {
         const response = await getRFQById(id);
         if (response.success) {
           // Only Drafts can be edited
-          if (response.data.status !== 'DRAFT') {
-            toast.error('Only DRAFT RFQs can be edited');
-            navigate(`/rfqs/${id}`);
+          if (response.data.status !== 'Draft') {
+            toast.error('Only Draft RFQs can be edited');
+            navigate(`/app/rfqs/${id}`);
             return;
           }
           setRfq(response.data);
@@ -36,26 +36,21 @@ const EditRFQ = () => {
     fetchRFQ();
   }, [id, navigate]);
 
-  if (loading) return <Loader rows={8} />;
+  if (loading) return <div className="max-w-4xl mx-auto mt-8"><Loader rows={8} /></div>;
   
-  if (error) return <EmptyState title="Error Loading RFQ" message={error} actionLabel="Go Back" onAction={() => navigate('/app/rfqs')} />;
+  if (error) return (
+    <div className="max-w-4xl mx-auto mt-8">
+      <EmptyState title="Error Loading RFQ" message={error} actionLabel="Go Back" onAction={() => navigate('/app/rfqs')} />
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center space-x-4">
-        <button 
-          onClick={() => navigate(-1)}
-          className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-surface-900">Edit Draft RFQ</h1>
-          <p className="text-sm text-surface-500 mt-1">{rfq.rfqNumber} — {rfq.title}</p>
-        </div>
-      </div>
-      
+      <PageHeader 
+        title="Edit Draft RFQ"
+        description={`${rfq.rfqNumber} — ${rfq.title}`}
+        backHref="/app/rfqs"
+      />
       <RFQForm initialData={rfq} mode="edit" />
     </div>
   );

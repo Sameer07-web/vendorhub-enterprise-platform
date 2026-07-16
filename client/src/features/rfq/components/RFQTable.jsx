@@ -20,7 +20,7 @@ const RFQTable = ({
       label: 'RFQ Details',
       render: (rfq) => (
         <div className="flex flex-col">
-          <Link to={`/rfqs/${rfq._id}`} className="text-sm font-semibold text-primary-600 hover:text-primary-700 focus-ring rounded w-max">
+          <Link to={`/app/rfqs/${rfq._id}`} className="text-sm font-semibold text-primary-600 hover:text-primary-700 focus-ring rounded w-max">
             {rfq.rfqNumber}
           </Link>
           <span className="text-sm font-medium text-surface-900 mt-0.5">{rfq.title}</span>
@@ -76,7 +76,7 @@ const RFQTable = ({
       render: (rfq) => (
         <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-30 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity duration-150">
           <Link
-            to={`/rfqs/${rfq._id}`}
+            to={`/app/rfqs/${rfq._id}`}
             className="p-1.5 text-surface-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors focus-ring"
             title="View Details"
           >
@@ -85,7 +85,7 @@ const RFQTable = ({
           
           {canEditRFQ(rfq) && (
             <Link
-              to={`/rfqs/${rfq._id}/edit`}
+              to={`/app/rfqs/${rfq._id}/edit`}
               className="p-1.5 text-surface-400 hover:text-success-600 hover:bg-success-50 rounded-md transition-colors focus-ring"
               title="Edit Draft"
             >

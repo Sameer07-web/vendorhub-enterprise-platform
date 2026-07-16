@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Edit, Send, CheckCircle, XCircle } from 'lucide-react';
+import { Edit, Send, CheckCircle, XCircle } from 'lucide-react';
 import { getPurchaseRequestById, submitPurchaseRequest, approvePurchaseRequest, rejectPurchaseRequest } from '../../../api/purchaseRequest.api';
 import PurchaseRequestStatusBadge from '../components/PurchaseRequestStatusBadge';
 import ApprovalTimeline from '../components/ApprovalTimeline';
@@ -10,6 +10,8 @@ import RejectDialog from '../components/RejectDialog';
 import Loader from '../../../components/common/Loader';
 import Modal from '../../../components/common/Modal';
 import Button from '../../../components/common/Button';
+import PageHeader from '../../../components/common/PageHeader';
+import DetailCard from '../../../components/common/DetailCard';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatDate } from '../../../utils/formatDate';
 import { 
@@ -18,15 +20,6 @@ import {
   canApprovePurchaseRequest, 
   canRejectPurchaseRequest 
 } from '../../../utils/permissions';
-
-const Card = ({ title, children }) => (
-  <div className="bg-white rounded-lg shadow-sm border border-surface-200 overflow-hidden">
-    <div className="px-6 py-4 border-b border-surface-200 bg-surface-50">
-      <h3 className="text-lg font-medium text-surface-800">{title}</h3>
-    </div>
-    <div className="p-6">{children}</div>
-  </div>
-);
 
 const PurchaseRequestDetails = () => {
   const { id } = useParams();
@@ -41,7 +34,7 @@ const PurchaseRequestDetails = () => {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
 
-  const fetchPR = async () => {
+  const fetchPR = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getPurchaseRequestById(id);
@@ -54,12 +47,11 @@ const PurchaseRequestDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchPR();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [fetchPR]);
 
   const handleSubmitConfirm = async () => {
     try {
@@ -69,7 +61,7 @@ const PurchaseRequestDetails = () => {
       setSubmitModalOpen(false);
       fetchPR();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to submit request');
+      toast.error(err?.message || 'Failed to submit request');
     } finally {
       setIsProcessing(false);
     }
@@ -83,7 +75,7 @@ const PurchaseRequestDetails = () => {
       setApproveModalOpen(false);
       fetchPR();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to approve request');
+      toast.error(err?.message || 'Failed to approve request');
     } finally {
       setIsProcessing(false);
     }
@@ -97,7 +89,7 @@ const PurchaseRequestDetails = () => {
       setRejectModalOpen(false);
       fetchPR();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to reject request');
+      toast.error(err?.message || 'Failed to reject request');
     } finally {
       setIsProcessing(false);
     }
@@ -125,51 +117,44 @@ const PurchaseRequestDetails = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={() => navigate('/app/purchase-requests')}
-            className="p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-surface-900">{pr.requestNumber}</h1>
-              <PurchaseRequestStatusBadge status={pr.status} />
-            </div>
-            <p className="text-sm text-surface-500 mt-1">{pr.title}</p>
+      <PageHeader
+        title={
+          <div className="flex items-center gap-3">
+            <span>{pr.requestNumber}</span>
+            <PurchaseRequestStatusBadge status={pr.status} />
           </div>
-        </div>
-        
-        <div className="flex gap-3">
-          {canEditPurchaseRequest(pr) && (
-            <Button variant="secondary" onClick={() => navigate(`/purchase-requests/${pr._id}/edit`)}>
-              <Edit size={16} className="mr-2" /> Edit Draft
-            </Button>
-          )}
-          {canSubmitPurchaseRequest(pr) && (
-            <Button variant="primary" onClick={() => setSubmitModalOpen(true)}>
-              <Send size={16} className="mr-2" /> Submit
-            </Button>
-          )}
-          {canApprovePurchaseRequest() && pr.status === 'PENDING_APPROVAL' && (
-            <Button variant="primary" onClick={() => setApproveModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
-              <CheckCircle size={16} className="mr-2" /> Approve
-            </Button>
-          )}
-          {canRejectPurchaseRequest() && pr.status === 'PENDING_APPROVAL' && (
-            <Button variant="danger" onClick={() => setRejectModalOpen(true)}>
-              <XCircle size={16} className="mr-2" /> Reject
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        description={pr.title}
+        backHref="/app/purchase-requests"
+        action={
+          <>
+            {canEditPurchaseRequest(pr) && (
+              <Button variant="secondary" onClick={() => navigate(`/app/purchase-requests/${pr._id}/edit`)}>
+                <Edit size={16} className="mr-2" /> Edit Draft
+              </Button>
+            )}
+            {canSubmitPurchaseRequest(pr) && (
+              <Button variant="primary" onClick={() => setSubmitModalOpen(true)}>
+                <Send size={16} className="mr-2" /> Submit
+              </Button>
+            )}
+            {canApprovePurchaseRequest() && pr.status === 'Pending Approval' && (
+              <Button variant="primary" onClick={() => setApproveModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
+                <CheckCircle size={16} className="mr-2" /> Approve
+              </Button>
+            )}
+            {canRejectPurchaseRequest() && pr.status === 'Pending Approval' && (
+              <Button variant="danger" onClick={() => setRejectModalOpen(true)}>
+                <XCircle size={16} className="mr-2" /> Reject
+              </Button>
+            )}
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card title="General Information">
+          <DetailCard title="General Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
                 <dt className="text-sm font-medium text-surface-500">Title</dt>
@@ -192,9 +177,9 @@ const PurchaseRequestDetails = () => {
                 <dd className="mt-1 text-sm text-surface-900 whitespace-pre-wrap">{pr.description}</dd>
               </div>
             </dl>
-          </Card>
+          </DetailCard>
 
-          <Card title="Financial Information">
+          <DetailCard title="Financial Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div>
                 <dt className="text-sm font-medium text-surface-500">Estimated Cost</dt>
@@ -203,66 +188,44 @@ const PurchaseRequestDetails = () => {
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-surface-500">Quantity</dt>
-                <dd className="mt-1 text-sm text-surface-900">{pr.quantity}</dd>
-              </div>
-              <div>
                 <dt className="text-sm font-medium text-surface-500">Required Date</dt>
                 <dd className="mt-1 text-sm text-surface-900">{formatDate(pr.requiredDate)}</dd>
               </div>
             </dl>
-          </Card>
+          </DetailCard>
 
-          <Card title="Vendor Information">
+          <DetailCard title="Vendor Information">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
               <div className="sm:col-span-2">
                 <dt className="text-sm font-medium text-surface-500">Selected Vendor</dt>
                 <dd className="mt-1 text-sm text-surface-900 flex items-center">
-                  <span className="font-medium mr-2">{pr.vendor?.companyName}</span>
-                  <span className="text-surface-500">({pr.vendor?.vendorCode})</span>
-                  <Link to={`/vendors/${pr.vendor?._id}`} className="ml-3 text-primary-600 hover:underline text-xs">
+                  <span className="font-medium mr-2">{pr.vendorName}</span>
+                  <Link to={`/app/vendors/${pr.vendorId}`} className="ml-3 text-primary-600 hover:underline text-xs">
                     View Vendor &rarr;
                   </Link>
                 </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-surface-500">GST Number</dt>
-                <dd className="mt-1 text-sm text-surface-900">{pr.vendor?.gstNumber || 'N/A'}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-surface-500">Vendor Status</dt>
-                <dd className="mt-1 text-sm text-surface-900">{pr.vendor?.status || 'Unknown'}</dd>
-              </div>
             </dl>
-          </Card>
+          </DetailCard>
         </div>
 
         <div className="space-y-6">
-          <Card title="Approval Timeline">
+          <DetailCard title="Approval Timeline">
             <ApprovalTimeline purchaseRequest={pr} />
-          </Card>
+          </DetailCard>
           
-          <Card title="Audit Information">
+          <DetailCard title="Audit Information">
             <dl className="space-y-4">
               <div>
                 <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Created By</dt>
-                <dd className="mt-1 text-sm text-surface-900">{pr.createdBy?.fullName}</dd>
+                <dd className="mt-1 text-sm text-surface-900">{pr.requester}</dd>
                 <dd className="text-xs text-surface-500">{formatDate(pr.createdAt, true)}</dd>
               </div>
-              {pr.managerComments && (
-                <div className="pt-4 border-t border-surface-100">
-                  <dt className="text-xs font-medium text-surface-500 uppercase tracking-wider">Manager Comments</dt>
-                  <dd className="mt-1 text-sm text-surface-900 italic bg-surface-50 p-3 rounded-md border border-surface-100">
-                    "{pr.managerComments}"
-                  </dd>
-                </div>
-              )}
             </dl>
-          </Card>
+          </DetailCard>
         </div>
       </div>
 
-      {/* Modals */}
       <Modal
         isOpen={submitModalOpen}
         onClose={() => !isProcessing && setSubmitModalOpen(false)}
@@ -270,8 +233,8 @@ const PurchaseRequestDetails = () => {
         actions={
           <>
             <Button variant="ghost" onClick={() => setSubmitModalOpen(false)} disabled={isProcessing}>Cancel</Button>
-            <Button variant="primary" onClick={handleSubmitConfirm} disabled={isProcessing}>
-              {isProcessing ? 'Submitting...' : 'Submit for Approval'}
+            <Button variant="primary" onClick={handleSubmitConfirm} isLoading={isProcessing}>
+              Submit for Approval
             </Button>
           </>
         }
@@ -284,12 +247,14 @@ const PurchaseRequestDetails = () => {
         onClose={() => setApproveModalOpen(false)}
         onConfirm={handleApproveConfirm}
         isSubmitting={isProcessing}
+        title={`Approve ${pr.requestNumber}`}
       />
       <RejectDialog
         isOpen={rejectModalOpen}
         onClose={() => setRejectModalOpen(false)}
         onConfirm={handleRejectConfirm}
         isSubmitting={isProcessing}
+        title={`Reject ${pr.requestNumber}`}
       />
     </div>
   );

@@ -4,12 +4,13 @@ import toast from 'react-hot-toast';
 import { Plus, FileText } from 'lucide-react';
 import { getRFQs, sendRFQ, closeRFQ, cancelRFQ } from '../../../api/rfq.api';
 import RFQTable from '../components/RFQTable';
-import { SendRFQDialog, CloseRFQDialog, CancelRFQDialog } from '../components/RFQDialogs';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/common/Pagination';
 import EmptyState from '../../../components/common/EmptyState';
 import Button from '../../../components/common/Button';
 import Select from '../../../components/common/Select';
+import PageHeader from '../../../components/common/PageHeader';
+import ConfirmDialog from '../../../components/common/ConfirmDialog';
 import { canCreateRFQ } from '../../../utils/permissions';
 
 const RFQList = () => {
@@ -92,7 +93,7 @@ const RFQList = () => {
       setSendModalOpen(false);
       fetchRFQList();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to send RFQ');
+      toast.error(err?.message || 'Failed to send RFQ');
     } finally {
       setIsProcessing(false);
     }
@@ -106,7 +107,7 @@ const RFQList = () => {
       setCloseModalOpen(false);
       fetchRFQList();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to close RFQ');
+      toast.error(err?.message || 'Failed to close RFQ');
     } finally {
       setIsProcessing(false);
     }
@@ -120,7 +121,7 @@ const RFQList = () => {
       setCancelModalOpen(false);
       fetchRFQList();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to cancel RFQ');
+      toast.error(err?.message || 'Failed to cancel RFQ');
     } finally {
       setIsProcessing(false);
     }
@@ -128,31 +129,31 @@ const RFQList = () => {
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'DRAFT', label: 'Draft' },
-    { value: 'SENT', label: 'Sent' },
-    { value: 'PARTIALLY_RESPONDED', label: 'Partially Responded' },
-    { value: 'CLOSED', label: 'Closed' },
-    { value: 'CANCELLED', label: 'Cancelled' }
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Published', label: 'Published' },
+    { value: 'Closed', label: 'Closed' },
+    { value: 'Awarded', label: 'Awarded' },
+    { value: 'Cancelled', label: 'Cancelled' }
   ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-surface-900 tracking-tight">Request For Quotations</h1>
-          <p className="text-sm text-surface-500 mt-1">Manage vendor quotation requests and responses.</p>
-        </div>
-        {canCreateRFQ() && (
-          <Button variant="primary" onClick={() => navigate('/app/rfqs/new')} className="shadow-sm" startIcon={Plus}>
-            Create RFQ
-          </Button>
-        )}
-      </div>
+      <PageHeader 
+        title="Request For Quotations"
+        description="Manage vendor quotation requests and responses."
+        action={
+          canCreateRFQ() && (
+            <Button variant="primary" onClick={() => navigate('/app/rfqs/new')} className="shadow-sm" startIcon={Plus}>
+              Create RFQ
+            </Button>
+          )
+        }
+      />
 
       <div className="bg-white p-5 rounded-lg shadow-sm border border-border flex flex-col sm:flex-row gap-4">
         <div className="flex-1 max-w-md">
           <SearchBar 
-            placeholder="Search by RFQ number, title, or PR..." 
+            placeholder="Search by RFQ number or title..." 
             onSearch={handleSearch} 
             initialValue={search}
           />
@@ -163,7 +164,6 @@ const RFQList = () => {
             value={status}
             onChange={handleFilterChange}
             className="w-full"
-            label=""
           />
         </div>
       </div>
@@ -172,17 +172,7 @@ const RFQList = () => {
         <EmptyState title="System Error" message={error} actionLabel="Try Again" onAction={fetchRFQList} />
       ) : (
         <div className="flex flex-col gap-4">
-          <RFQTable 
-            rfqs={rfqs} 
-            isLoading={loading}
-            onSendClick={(rfq) => { setSelectedRfq(rfq); setSendModalOpen(true); }}
-            onCloseClick={(rfq) => { setSelectedRfq(rfq); setCloseModalOpen(true); }}
-            onCancelClick={(rfq) => { setSelectedRfq(rfq); setCancelModalOpen(true); }}
-          />
-          {!loading && rfqs.length > 0 && (
-            <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
-          )}
-          {!loading && rfqs.length === 0 && (
+          {rfqs.length === 0 && !loading ? (
             <EmptyState 
               title="No RFQs Found" 
               message={search || status ? "No RFQs match your current filters." : "There are no Request For Quotations in the system."}
@@ -198,14 +188,54 @@ const RFQList = () => {
                 }
               }}
             />
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-border overflow-hidden">
+              <RFQTable 
+                rfqs={rfqs} 
+                isLoading={loading}
+                onSendClick={(rfq) => { setSelectedRfq(rfq); setSendModalOpen(true); }}
+                onCloseClick={(rfq) => { setSelectedRfq(rfq); setCloseModalOpen(true); }}
+                onCancelClick={(rfq) => { setSelectedRfq(rfq); setCancelModalOpen(true); }}
+              />
+            </div>
+          )}
+          {!loading && rfqs.length > 0 && (
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
           )}
         </div>
       )}
 
       {/* Dialogs */}
-      <SendRFQDialog isOpen={sendModalOpen} onClose={() => setSendModalOpen(false)} onConfirm={handleSendConfirm} isSubmitting={isProcessing} title={`Send ${selectedRfq?.rfqNumber}`} />
-      <CloseRFQDialog isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onConfirm={handleCloseConfirm} isSubmitting={isProcessing} title={`Close ${selectedRfq?.rfqNumber}`} />
-      <CancelRFQDialog isOpen={cancelModalOpen} onClose={() => setCancelModalOpen(false)} onConfirm={handleCancelConfirm} isSubmitting={isProcessing} title={`Cancel ${selectedRfq?.rfqNumber}`} />
+      <ConfirmDialog
+        isOpen={sendModalOpen}
+        onClose={() => setSendModalOpen(false)}
+        onConfirm={handleSendConfirm}
+        title={`Send ${selectedRfq?.rfqNumber}`}
+        message="Are you sure you want to send this RFQ to all selected vendors? This action will formally start the quotation process and cannot be reversed."
+        confirmText="Send RFQ"
+        variant="primary"
+        isLoading={isProcessing}
+      />
+      <ConfirmDialog
+        isOpen={closeModalOpen}
+        onClose={() => setCloseModalOpen(false)}
+        onConfirm={handleCloseConfirm}
+        title={`Close ${selectedRfq?.rfqNumber}`}
+        message="Are you sure you want to close this RFQ? Vendors will no longer be able to submit quotations. This action cannot be reversed."
+        confirmText="Close RFQ"
+        variant="primary"
+        isLoading={isProcessing}
+      />
+      <ConfirmDialog
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={handleCancelConfirm}
+        title={`Cancel ${selectedRfq?.rfqNumber}`}
+        message="Are you sure you want to cancel this RFQ? This will mark it as cancelled and it can no longer be edited or sent. This action cannot be reversed."
+        confirmText="Cancel RFQ"
+        variant="danger"
+        isLoading={isProcessing}
+      />
     </div>
   );
 };
