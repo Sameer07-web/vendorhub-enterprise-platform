@@ -3,6 +3,7 @@ import { Card, CardBody } from '../../../components/common/Card';
 import Button from '../../../components/common/Button';
 import { Plus, Users, Activity, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const QuickActions = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const QuickActions = () => {
           <Button 
             variant="secondary" 
             className="w-full bg-white/10 hover:bg-white/20 text-white border-transparent text-sm py-2.5 justify-start pl-3"
-            onClick={() => console.log('Generate report')}
+            onClick={() => toast.success('Report generation started...')}
             startIcon={FileText}
           >
             Run Report

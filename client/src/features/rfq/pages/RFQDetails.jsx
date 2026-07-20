@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Edit, Send, CheckCircle, XCircle, FileText, Zap } from 'lucide-react';
+import { Edit, Send, CheckCircle, XCircle, FileText } from 'lucide-react';
 import { getRFQById, sendRFQ, closeRFQ, cancelRFQ } from '../../../api/rfq.api';
-import { getQuotesByRFQ, generateMockQuotes } from '../../../api/quote.api';
+import { getQuotesByRFQ, createQuotation } from '../../../api/quote.api';
 import { getVendors } from '../../../api/vendor.api';
 import RFQStatusBadge from '../components/RFQStatusBadge';
 import RFQTimeline from '../components/RFQTimeline';
@@ -30,9 +30,6 @@ const RFQDetails = () => {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  
-  const [simulateQuotesModalOpen, setSimulateQuotesModalOpen] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     try {
@@ -105,24 +102,40 @@ const RFQDetails = () => {
     }
   };
 
-  const handleSimulateQuotes = async () => {
+  const handleSimulateResponses = async () => {
     try {
-      setIsSimulating(true);
-      const vendorsToInvite = rfq.invitedVendors || [];
+      setIsProcessing(true);
+      const vendorsToInvite = rfq.vendors || [];
       if (vendorsToInvite.length === 0) {
         toast.error('No vendors invited to this RFQ');
         return;
       }
-      await generateMockQuotes(id, vendorsToInvite, vendors);
-      toast.success('Mock quotes generated successfully');
-      setSimulateQuotesModalOpen(false);
+
+      await Promise.all(
+        vendorsToInvite.map(v => {
+          const vendorId = typeof v === 'object' ? v._id : v;
+          const subtotal = Math.round(20000 + Math.random() * 30000);
+          return createQuotation({
+            rfq: rfq._id,
+            vendor: vendorId,
+            subtotal,
+            taxAmount: Math.round(subtotal * 0.1),
+            shippingCost: 500,
+            discount: 1000,
+            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          });
+        })
+      );
+
+      toast.success('Vendor responses simulated successfully via API');
       fetchDetails();
     } catch (err) {
-      toast.error(err?.message || 'Failed to generate quotes');
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to simulate responses');
     } finally {
-      setIsSimulating(false);
+      setIsProcessing(false);
     }
   };
+
 
   if (isLoading) return <div className="max-w-5xl mx-auto mt-8"><Loader rows={8} /></div>;
 
@@ -175,13 +188,13 @@ const RFQDetails = () => {
                 <XCircle size={16} className="mr-2" /> Cancel
               </Button>
             )}
-            {/* Dev Action: Simulate Quotes */}
-            {rfq.status === 'Published' && quotes.length === 0 && (
-              <Button variant="secondary" onClick={() => setSimulateQuotesModalOpen(true)} className="border-primary-200 text-primary-700 hover:bg-primary-50 bg-primary-50">
-                <Zap size={16} className="mr-2 text-primary-500" /> Simulate Vendor Responses
+
+            {['SENT', 'PARTIALLY_RESPONDED'].includes(rfq.status) && (
+              <Button variant="secondary" onClick={handleSimulateResponses} isLoading={isProcessing}>
+                Simulate Responses
               </Button>
             )}
-            {quotes.length > 0 && rfq.status === 'Published' && (
+            {quotes.length > 0 && ['Published', 'SENT', 'PARTIALLY_RESPONDED', 'CLOSED'].includes(rfq.status) && (
               <Button variant="primary" onClick={() => navigate(`/app/rfqs/${rfq._id}/compare`)}>
                 Compare Quotes
               </Button>
@@ -253,18 +266,19 @@ const RFQDetails = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-surface-200">
-                  {(rfq.invitedVendors || []).map((vId) => {
-                    const vendor = vendors.find(v => v._id === vId) || { companyName: 'Unknown Vendor' };
+                  {(rfq.vendors || []).map((v) => {
+                    const vendor = typeof v === 'object' ? v : (vendors.find(item => item._id === v) || { companyName: 'Unknown Vendor' });
+                    const vendorId = typeof v === 'object' ? v._id : v;
                     return (
-                      <tr key={vId}>
+                      <tr key={vendorId}>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-surface-900">{vendor.companyName}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                          <Link to={`/app/vendors/${vId}`} className="text-primary-600 hover:text-primary-900 hover:underline">Profile</Link>
+                          <Link to={`/app/vendors/${vendorId}`} className="text-primary-600 hover:text-primary-900 hover:underline">Profile</Link>
                         </td>
                       </tr>
                     );
                   })}
-                  {(!rfq.invitedVendors || rfq.invitedVendors.length === 0) && (
+                  {(!rfq.vendors || rfq.vendors.length === 0) && (
                     <tr>
                       <td colSpan="2" className="px-4 py-8 text-center text-sm text-surface-500">No vendors invited.</td>
                     </tr>
@@ -287,10 +301,10 @@ const RFQDetails = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-surface-200">
                     {quotes.map((quote) => (
-                      <tr key={quote._id} className={rfq.awardedQuoteId === quote._id ? 'bg-emerald-50' : ''}>
+                      <tr key={quote._id} className={quote.isWinner ? 'bg-emerald-50' : ''}>
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-surface-900">
                           {quote.vendorName}
-                          {rfq.awardedQuoteId === quote._id && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Awarded</span>}
+                          {quote.isWinner && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Awarded</span>}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-surface-900">{formatCurrency(quote.totalPrice, quote.currency)}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm text-surface-500">{quote.deliveryTime}</td>
@@ -355,16 +369,6 @@ const RFQDetails = () => {
         confirmText="Cancel RFQ"
         variant="danger"
         isLoading={isProcessing}
-      />
-      <ConfirmDialog
-        isOpen={simulateQuotesModalOpen}
-        onClose={() => setSimulateQuotesModalOpen(false)}
-        onConfirm={handleSimulateQuotes}
-        title="Simulate Vendor Responses"
-        message={`This will generate ${rfq.invitedVendors?.length || 0} mock quotes for testing purposes. Are you sure?`}
-        confirmText="Generate Quotes"
-        variant="primary"
-        isLoading={isSimulating}
       />
     </div>
   );

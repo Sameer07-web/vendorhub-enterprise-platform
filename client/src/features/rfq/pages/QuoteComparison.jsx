@@ -177,21 +177,24 @@ const QuoteComparison = () => {
             {/* Award Action */}
             <tr>
               <td className="px-6 py-4 border-r border-surface-200 bg-surface-50/50"></td>
-              {quotes.map((quote) => (
-                <td key={quote._id} className="px-6 py-4 border-r border-surface-200 text-center">
-                  {rfq.awardedQuoteId === quote._id ? (
-                     <div className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-emerald-700 bg-emerald-100 w-full">
-                       <CheckCircle size={16} className="mr-2" /> Awarded
-                     </div>
-                  ) : rfq.status === 'Awarded' ? (
-                     <div className="text-sm text-surface-400">Not selected</div>
-                  ) : (
-                    <Button variant="primary" className="w-full justify-center" onClick={() => handleAwardClick(quote)}>
-                      Award to {quote.vendorName}
-                    </Button>
-                  )}
-                </td>
-              ))}
+              {quotes.map((quote) => {
+                const hasWinner = quotes.some(q => q.isWinner);
+                return (
+                  <td key={quote._id} className="px-6 py-4 border-r border-surface-200 text-center">
+                    {quote.isWinner ? (
+                       <div className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-emerald-700 bg-emerald-100 w-full">
+                         <CheckCircle size={16} className="mr-2" /> Awarded
+                       </div>
+                    ) : hasWinner ? (
+                       <div className="text-sm text-surface-400">Not selected</div>
+                    ) : (
+                      <Button variant="primary" className="w-full justify-center" onClick={() => handleAwardClick(quote)}>
+                        Award to {quote.vendorName}
+                      </Button>
+                    )}
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>

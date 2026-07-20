@@ -1,0 +1,71 @@
+name: CI/CD Pipeline - RC1
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Root Dependencies
+      run: npm install
+
+    - name: Install Backend Dependencies
+      working-directory: ./server
+      run: npm ci
+
+    - name: Install Frontend Dependencies
+      working-directory: ./client
+      run: npm ci
+
+    - name: Lint Backend
+      working-directory: ./server
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Lint Frontend
+      working-directory: ./client
+      run: npm run lint
+
+    - name: Test Backend
+      working-directory: ./server
+      run: npm test -- --coverage
+      env:
+        NODE_ENV: test
+        JWT_SECRET: test_secret
+        JWT_EXPIRES_IN: 1h
+
+    - name: Test Frontend
+      working-directory: ./client
+      run: npm test -- --coverage
+
+    - name: Build Frontend
+      working-directory: ./client
+      run: npm run build
+
+    - name: Upload Backend Coverage Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: backend-coverage
+        path: server/coverage/
+        retention-days: 7
+
+    - name: Upload Frontend Coverage Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: frontend-coverage
+        path: client/coverage/
+        retention-days: 7

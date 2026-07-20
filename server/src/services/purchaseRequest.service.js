@@ -2,6 +2,8 @@ const PurchaseRequest = require("../models/PurchaseRequest");
 const Counter = require("../models/Counter");
 const Vendor = require("../models/Vendor");
 const ApiError = require("../utils/ApiError");
+const escapeRegex = require("../utils/escapeRegex");
+const { logEvent } = require("./audit.service");
 
 /**
  * Generate Next PR Code safely using Counters collection
@@ -48,6 +50,14 @@ const createPurchaseRequest = async (prData, user) => {
   const pr = await PurchaseRequest.create(dataToSave);
   console.log(`[LOG] Purchase Request Created: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
+  await logEvent({
+    userId: user._id,
+    action: "CREATE_PR",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    newValue: pr.toObject(),
+  });
+
   return pr;
 };
 
@@ -80,10 +90,11 @@ const getPurchaseRequests = async (query, user) => {
   if (department) filter.department = department;
 
   if (search) {
+    const escaped = escapeRegex(search);
     filter.$or = [
-      { requestNumber: { $regex: search, $options: "i" } },
-      { title: { $regex: search, $options: "i" } },
-      { department: { $regex: search, $options: "i" } },
+      { requestNumber: { $regex: escaped, $options: "i" } },
+      { title: { $regex: escaped, $options: "i" } },
+      { department: { $regex: escaped, $options: "i" } },
     ];
   }
 
@@ -152,9 +163,20 @@ const updatePurchaseRequest = async (id, updateData, user) => {
     await checkVendorValidity(updateData.vendor);
   }
 
+  const oldVal = pr.toObject();
   updateData.updatedBy = user._id;
 
   const updatedPr = await PurchaseRequest.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+  await logEvent({
+    userId: user._id,
+    action: "UPDATE_PR",
+    entityType: "PurchaseRequest",
+    entityId: id,
+    oldValue: oldVal,
+    newValue: updatedPr.toObject(),
+  });
+
   return updatedPr;
 };
 
@@ -173,12 +195,23 @@ const submitPurchaseRequest = async (id, user) => {
     throw new ApiError(400, `Cannot submit request in ${pr.status} status`);
   }
 
+  const oldVal = pr.toObject();
   pr.status = "PENDING_APPROVAL";
   pr.submittedAt = new Date();
   pr.updatedBy = user._id;
   await pr.save();
 
   console.log(`[LOG] Purchase Request Submitted: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "SUBMIT_PR",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    oldValue: oldVal,
+    newValue: pr.toObject(),
+  });
+
   return pr;
 };
 
@@ -193,6 +226,7 @@ const approvePurchaseRequest = async (id, comments, user) => {
     throw new ApiError(400, `Cannot approve request in ${pr.status} status. Must be PENDING_APPROVAL.`);
   }
 
+  const oldVal = pr.toObject();
   pr.status = "APPROVED";
   pr.approvedBy = user._id;
   pr.approvedAt = new Date();
@@ -202,6 +236,16 @@ const approvePurchaseRequest = async (id, comments, user) => {
   await pr.save();
 
   console.log(`[LOG] Purchase Request Approved: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "APPROVE_PR",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    oldValue: oldVal,
+    newValue: pr.toObject(),
+  });
+
   return pr;
 };
 
@@ -220,6 +264,7 @@ const rejectPurchaseRequest = async (id, comments, user) => {
     throw new ApiError(400, "Manager comments are required when rejecting a request.");
   }
 
+  const oldVal = pr.toObject();
   pr.status = "REJECTED";
   pr.approvedBy = user._id; // capturing the reviewer
   pr.updatedBy = user._id;
@@ -228,6 +273,16 @@ const rejectPurchaseRequest = async (id, comments, user) => {
   await pr.save();
 
   console.log(`[LOG] Purchase Request Rejected: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "REJECT_PR",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    oldValue: oldVal,
+    newValue: pr.toObject(),
+  });
+
   return pr;
 };
 
@@ -238,11 +293,21 @@ const deletePurchaseRequest = async (id, user) => {
   const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
+  const oldVal = pr.toObject();
   pr.isDeleted = true;
   pr.updatedBy = user._id;
   await pr.save();
 
   console.log(`[LOG] Purchase Request Deleted: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "DELETE_PR",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    oldValue: oldVal,
+  });
+
   return true;
 };
 

@@ -91,6 +91,10 @@ const purchaseRequestSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance optimization
+purchaseRequestSchema.index({ isDeleted: 1, status: 1 });
+purchaseRequestSchema.index({ createdBy: 1 });
+
 const PurchaseRequest = mongoose.model("PurchaseRequest", purchaseRequestSchema);
 
 module.exports = PurchaseRequest;

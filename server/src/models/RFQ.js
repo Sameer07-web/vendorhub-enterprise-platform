@@ -84,6 +84,10 @@ const rfqSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance optimization
+rfqSchema.index({ isDeleted: 1, status: 1 });
+rfqSchema.index({ purchaseRequest: 1 });
+
 const RFQ = mongoose.model("RFQ", rfqSchema);
 
 module.exports = RFQ;

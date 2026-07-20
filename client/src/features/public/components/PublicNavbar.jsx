@@ -18,6 +18,7 @@ const PublicNavbar = () => {
               <span className="text-xl font-bold text-surface-900 tracking-tight">VendorHub</span>
             </Link>
             <div className="hidden md:flex items-center space-x-6">
+              <Link to="/" className="text-sm font-medium text-surface-600 hover:text-primary-600 transition-colors">Home</Link>
               <Link to="/architecture" className="text-sm font-medium text-surface-600 hover:text-primary-600 transition-colors">Architecture</Link>
               <Link to="/docs" className="text-sm font-medium text-surface-600 hover:text-primary-600 transition-colors">Documentation</Link>
               <Link to="/contact" className="text-sm font-medium text-surface-600 hover:text-primary-600 transition-colors">Contact</Link>
@@ -29,14 +30,9 @@ const PublicNavbar = () => {
                 Go to Dashboard
               </Button>
             ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate('/login')}>
-                  Sign In
-                </Button>
-                <Button variant="primary" onClick={() => navigate('/register')}>
-                  Start Free Trial
-                </Button>
-              </>
+              <Button variant="primary" onClick={() => navigate('/login')}>
+                Sign In
+              </Button>
             )}
           </div>
         </div>

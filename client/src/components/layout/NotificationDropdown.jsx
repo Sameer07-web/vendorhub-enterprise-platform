@@ -1,12 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Check, X, Info, AlertTriangle, CheckCircle } from 'lucide-react';
 import Button from '../common/Button';
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'approval', title: 'Purchase Request Approved', message: 'PR-1042 has been approved by Finance.', time: '5m ago', read: false },
-  { id: 2, type: 'alert', title: 'Vendor Compliance Alert', message: 'GlobalTech Solutions insurance expires in 15 days.', time: '2h ago', read: false },
-  { id: 3, type: 'system', title: 'System Update', message: 'VendorHub will undergo scheduled maintenance this Sunday at 2 AM EST.', time: '1d ago', read: true },
-];
+import { getDashboardStats } from '../../api/dashboard.api';
 
 const getIcon = (type) => {
   switch (type) {
@@ -16,12 +11,30 @@ const getIcon = (type) => {
   }
 };
 
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return '';
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [readIds, setReadIds] = useState(new Set());
+  const [loaded, setLoaded] = useState(false);
   const dropdownRef = useRef(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -33,16 +46,59 @@ const NotificationDropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch notifications derived from dashboard data when dropdown opens
+  useEffect(() => {
+    if (isOpen && !loaded) {
+      const fetchNotifications = async () => {
+        try {
+          const res = await getDashboardStats();
+          if (res.success) {
+            const derived = [];
+            
+            // Pending approvals become notifications
+            (res.data.pendingApprovals || []).forEach((pr, i) => {
+              derived.push({
+                id: `approval-${pr._id || i}`,
+                type: 'approval',
+                title: `PR Pending Approval`,
+                message: `${pr.title} from ${pr.requester} requires your review.`,
+                time: pr.date,
+              });
+            });
+
+            // Recent activity items
+            (res.data.activityTimelineData || []).forEach((item, i) => {
+              derived.push({
+                id: `activity-${item.id || i}`,
+                type: item.type === 'warning' ? 'alert' : 'system',
+                title: item.title,
+                message: item.description,
+                time: item.time,
+              });
+            });
+
+            setNotifications(derived.slice(0, 8));
+            setLoaded(true);
+          }
+        } catch (err) {
+          console.error('Failed to load notifications:', err);
+        }
+      };
+      fetchNotifications();
+    }
+  }, [isOpen, loaded]);
+
   const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    setReadIds(new Set(notifications.map(n => n.id)));
   };
 
   const clearAll = () => {
     setNotifications([]);
+    setReadIds(new Set());
   };
 
   const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    setReadIds(prev => new Set([...prev, id]));
   };
 
   return (
@@ -89,24 +145,24 @@ const NotificationDropdown = () => {
                 {notifications.map((notif) => (
                   <div 
                     key={notif.id} 
-                    className={`px-4 py-3 hover:bg-surface-50 transition-colors cursor-pointer flex gap-3 ${!notif.read ? 'bg-primary-50/30' : ''}`}
+                    className={`px-4 py-3 hover:bg-surface-50 transition-colors cursor-pointer flex gap-3 ${!readIds.has(notif.id) ? 'bg-primary-50/30' : ''}`}
                     onClick={() => markAsRead(notif.id)}
                   >
                     <div className="shrink-0 mt-0.5">
                       {getIcon(notif.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!notif.read ? 'font-semibold text-surface-900' : 'font-medium text-surface-700'}`}>
+                      <p className={`text-sm ${!readIds.has(notif.id) ? 'font-semibold text-surface-900' : 'font-medium text-surface-700'}`}>
                         {notif.title}
                       </p>
                       <p className="text-sm text-surface-600 mt-0.5 line-clamp-2 leading-snug">
                         {notif.message}
                       </p>
                       <p className="text-xs text-surface-400 mt-1.5 font-medium">
-                        {notif.time}
+                        {formatTimeAgo(notif.time)}
                       </p>
                     </div>
-                    {!notif.read && (
+                    {!readIds.has(notif.id) && (
                       <div className="shrink-0 flex items-center">
                         <div className="w-2 h-2 rounded-full bg-primary-500"></div>
                       </div>
@@ -116,14 +172,6 @@ const NotificationDropdown = () => {
               </div>
             )}
           </div>
-          
-          {notifications.length > 0 && (
-            <div className="p-2 border-t border-border bg-surface-50 text-center shrink-0">
-              <Button variant="ghost" className="w-full text-xs h-8 text-primary-600">
-                View All Settings
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -1,14 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FileText, Users, FileSearch, ArrowRight, X } from 'lucide-react';
-
-const SEARCH_DATA = [
-  { id: '1', type: 'vendor', title: 'GlobalTech Solutions', subtitle: 'Software & Cloud', url: '/app/vendors/1' },
-  { id: '2', type: 'vendor', title: 'Apex Manufacturing', subtitle: 'Hardware', url: '/app/vendors/2' },
-  { id: '3', type: 'pr', title: 'PR-1042', subtitle: 'Q3 Developer Laptops - $42,500', url: '/app/purchase-requests/1' },
-  { id: '4', type: 'pr', title: 'PR-1089', subtitle: 'AWS Cloud Hosting Renewal', url: '/app/purchase-requests/2' },
-  { id: '5', type: 'rfq', title: 'RFQ-2023-01', subtitle: 'Enterprise CRM Migration', url: '/app/rfqs/1' }
-];
+import { Search, FileText, Users, FileSearch, ArrowRight, X, Loader2 } from 'lucide-react';
+import { globalSearch } from '../../api/search.api';
 
 const getIcon = (type) => {
   switch (type) {
@@ -21,28 +14,74 @@ const getIcon = (type) => {
 
 const GlobalSearch = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
+  const debounceRef = useRef(null);
   const navigate = useNavigate();
 
-  const results = query.length > 0 
-    ? SEARCH_DATA.filter(item => 
-        item.title.toLowerCase().includes(query.toLowerCase()) || 
-        item.subtitle.toLowerCase().includes(query.toLowerCase())
-      )
-    : SEARCH_DATA.slice(0, 3); // Show recent by default
+  // Debounced search
+  const performSearch = useCallback(async (searchQuery) => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await globalSearch(searchQuery.trim());
+      if (res.success) {
+        const combined = [];
+        (res.data.vendors || []).forEach(v => combined.push({
+          id: v._id,
+          type: 'vendor',
+          title: v.companyName,
+          subtitle: `${v.vendorCode} • ${v.vendorCategory || 'Vendor'}`,
+          url: `/app/vendors/${v._id}`,
+        }));
+        (res.data.purchaseRequests || []).forEach(pr => combined.push({
+          id: pr._id,
+          type: 'pr',
+          title: pr.prId || pr.title,
+          subtitle: `${pr.title} • ${pr.department}`,
+          url: `/app/purchase-requests/${pr._id}`,
+        }));
+        (res.data.rfqs || []).forEach(rfq => combined.push({
+          id: rfq._id,
+          type: 'rfq',
+          title: rfq.rfqId || rfq.title,
+          subtitle: rfq.title,
+          url: `/app/rfqs/${rfq._id}`,
+        }));
+        setResults(combined);
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setQuery('');
+      setResults([]);
       setActiveIndex(0);
     }
   }, [isOpen]);
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [query]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      performSearch(query);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, performSearch]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -83,6 +122,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          {loading && <Loader2 className="w-5 h-5 text-surface-400 animate-spin mr-2" />}
           <button onClick={onClose} className="p-1 rounded-md text-surface-400 hover:text-surface-600 hover:bg-surface-200 transition-colors focus-ring">
             <X size={20} />
           </button>
@@ -92,7 +132,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
           {results.length > 0 ? (
             <>
               <div className="px-4 py-2 text-xs font-semibold text-surface-500 uppercase tracking-wider">
-                {query.length > 0 ? 'Results' : 'Recent'}
+                Results ({results.length})
               </div>
               <ul className="px-2">
                 {results.map((item, index) => {
@@ -123,13 +163,18 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                 })}
               </ul>
             </>
-          ) : (
+          ) : query.length >= 2 && !loading ? (
             <div className="py-14 px-6 text-center">
               <Search className="w-8 h-8 text-surface-300 mx-auto mb-4" />
               <p className="text-surface-900 font-medium">No results found for "{query}"</p>
-              <p className="text-surface-500 text-sm mt-1">Try adjusting your search terms or filters.</p>
+              <p className="text-surface-500 text-sm mt-1">Try adjusting your search terms.</p>
             </div>
-          )}
+          ) : query.length < 2 ? (
+            <div className="py-14 px-6 text-center">
+              <Search className="w-8 h-8 text-surface-300 mx-auto mb-4" />
+              <p className="text-surface-500 text-sm">Type at least 2 characters to search across vendors, requests, and RFQs.</p>
+            </div>
+          ) : null}
         </div>
         
         <div className="border-t border-border bg-surface-50 px-4 py-2.5 flex items-center gap-4 text-xs text-surface-500 shrink-0">

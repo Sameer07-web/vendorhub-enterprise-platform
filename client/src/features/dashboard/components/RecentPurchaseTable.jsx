@@ -5,17 +5,25 @@ import Table from '../../../components/common/Table';
 import Badge from '../../../components/common/Badge';
 import Button from '../../../components/common/Button';
 import { Card, CardHeader, CardBody } from '../../../components/common/Card';
+import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatDate } from '../../../utils/formatDate';
 
 const RecentPurchaseTable = ({ data = [] }) => {
   const navigate = useNavigate();
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Approved': return 'success';
-      case 'Pending': return 'warning';
-      case 'Rejected': return 'error';
+    switch (status?.toUpperCase()) {
+      case 'APPROVED': return 'success';
+      case 'PENDING_APPROVAL': return 'warning';
+      case 'REJECTED': return 'error';
+      case 'CANCELLED': return 'error';
       default: return 'secondary';
     }
+  };
+
+  const formatStatus = (status) => {
+    if (!status) return '';
+    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   };
 
   const columns = [
@@ -29,18 +37,18 @@ const RecentPurchaseTable = ({ data = [] }) => {
         </div>
       ) 
     },
-    { key: 'vendor', label: 'Vendor' },
-    { key: 'amount', label: 'Amount', align: 'right', render: (row) => <span className="font-medium text-surface-900">{row.amount}</span> },
+    { key: 'vendor', label: 'Created By' },
+    { key: 'amount', label: 'Amount', align: 'right', render: (row) => <span className="font-medium text-surface-900">{typeof row.amount === 'number' ? formatCurrency(row.amount) : row.amount}</span> },
     { 
       key: 'status', 
       label: 'Status', 
       render: (row) => (
         <Badge variant={getStatusBadge(row.status)}>
-          {row.status}
+          {formatStatus(row.status)}
         </Badge>
       ) 
     },
-    { key: 'date', label: 'Date', align: 'right', render: (row) => <span className="text-surface-500">{row.date}</span> },
+    { key: 'date', label: 'Date', align: 'right', render: (row) => <span className="text-surface-500">{row.date ? formatDate(row.date) : ''}</span> },
     {
       key: 'actions',
       label: '',
@@ -49,7 +57,7 @@ const RecentPurchaseTable = ({ data = [] }) => {
       render: (row) => (
         <Button variant="secondary" size="sm" onClick={(e) => {
           e.stopPropagation();
-          navigate(`/app/purchase-requests/${row.id}`);
+          navigate(`/app/purchase-requests/${row._id}`);
         }}>
           View
         </Button>
@@ -68,11 +76,17 @@ const RecentPurchaseTable = ({ data = [] }) => {
         }
       />
       <CardBody className="p-0">
-        <Table 
-          columns={columns}
-          data={data}
-          onRowClick={(row) => navigate(`/app/purchase-requests/${row.id}`)}
-        />
+        {data.length > 0 ? (
+          <Table 
+            columns={columns}
+            data={data}
+            onRowClick={(row) => navigate(`/app/purchase-requests/${row._id}`)}
+          />
+        ) : (
+          <div className="p-8 text-center text-surface-500 text-sm">
+            No purchase requests yet. Create your first one!
+          </div>
+        )}
       </CardBody>
     </Card>
   );

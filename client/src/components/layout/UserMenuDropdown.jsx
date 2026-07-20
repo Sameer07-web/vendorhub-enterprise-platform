@@ -8,13 +8,10 @@ const UserMenuDropdown = () => {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   
-  const currentUser = getCurrentUser() || { 
-    name: 'Admin User', 
-    email: 'admin@vendorhub.app',
-    role: 'Administrator' 
-  };
+  const currentUser = getCurrentUser() || {};
   
-  const initials = currentUser.name?.charAt(0) || 'U';
+  const displayName = currentUser.fullName || currentUser.name || 'User';
+  const initials = displayName.charAt(0).toUpperCase();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -50,7 +47,7 @@ const UserMenuDropdown = () => {
         aria-haspopup="true"
       >
         <div className="flex flex-col items-end hidden sm:flex text-right">
-          <span className="text-sm font-semibold text-surface-900 leading-tight">{currentUser.name || 'User'}</span>
+          <span className="text-sm font-semibold text-surface-900 leading-tight">{displayName}</span>
           <span className="text-xs text-surface-500 font-medium">{currentUser.role}</span>
         </div>
         <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-semibold shadow-sm border border-primary-200/50">
@@ -61,8 +58,8 @@ const UserMenuDropdown = () => {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-floating z-50 animate-scale-in origin-top-right overflow-hidden">
           <div className="px-4 py-3 border-b border-border bg-surface-50">
-            <p className="text-sm font-semibold text-surface-900 truncate">{currentUser.name || 'User'}</p>
-            <p className="text-xs text-surface-500 truncate mt-0.5">{currentUser.email || 'user@vendorhub.app'}</p>
+            <p className="text-sm font-semibold text-surface-900 truncate">{displayName}</p>
+            <p className="text-xs text-surface-500 truncate mt-0.5">{currentUser.email || ''}</p>
           </div>
           
           <div className="py-1">

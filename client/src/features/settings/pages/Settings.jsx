@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Settings as SettingsIcon, Palette, Bell, Shield, Accessibility, Keyboard, Info } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Bell, Shield, Accessibility, Keyboard, Info, Activity, Eye, EyeOff } from 'lucide-react';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
+import Loader from '../../../components/common/Loader';
+import Pagination from '../../../components/common/Pagination';
 import { useTheme } from '../../../context/ThemeContext';
 import toast from 'react-hot-toast';
+import { getAuditLogs } from '../../../api/user.api';
+import { formatDate } from '../../../utils/formatDate';
 
 const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'general';
   const [activeTab, setActiveTab] = useState(initialTab);
   const { theme, setTheme } = useTheme();
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'Admin';
 
   // Sync tab state with URL without triggering navigation reload
   useEffect(() => {
@@ -25,6 +32,7 @@ const Settings = () => {
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
+    ...(isAdmin ? [{ id: 'audit', label: 'Audit Logs', icon: Activity }] : []),
     { id: 'accessibility', label: 'Accessibility', icon: Accessibility },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
     { id: 'about', label: 'About', icon: Info },
@@ -195,6 +203,159 @@ const Settings = () => {
           </div>
         )}
 
+        {/* Audit Logs Tab */}
+        {activeTab === 'audit' && isAdmin && (
+          <AuditLogView />
+        )}
+
+      </div>
+    </div>
+  );
+};
+
+const AuditLogView = () => {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [expandedLogId, setExpandedLogId] = useState(null);
+
+  const fetchLogs = async (currentPage) => {
+    try {
+      setLoading(true);
+      const res = await getAuditLogs({ page: currentPage, limit: 10 });
+      if (res.success) {
+        setLogs(res.data.logs || []);
+        setTotalPages(res.data.totalPages || 1);
+        setTotal(res.data.total || 0);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load audit logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs(page);
+  }, [page]);
+
+  const toggleExpand = (id) => {
+    setExpandedLogId(expandedLogId === id ? null : id);
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-xl font-bold text-surface-900">System Audit Logs</h2>
+        <p className="text-surface-500 text-sm mt-1">Chronological history of write and update events across the platform (Admin only).</p>
+      </div>
+
+      <div className="card-base p-6">
+        {loading ? (
+          <Loader rows={6} />
+        ) : logs.length === 0 ? (
+          <div className="text-center py-12">
+            <Activity className="w-12 h-12 text-surface-300 mx-auto mb-4" />
+            <h3 className="text-surface-900 font-semibold mb-2">No logs found</h3>
+            <p className="text-surface-500 text-sm">System events will appear here once CRUD actions are performed.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="overflow-x-auto border border-border rounded-lg">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-surface-50">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-surface-600 uppercase">Timestamp</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-surface-600 uppercase">User</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-surface-600 uppercase">Action</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-surface-600 uppercase">Entity</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-surface-600 uppercase">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-surface divide-y divide-border">
+                  {logs.map((log) => {
+                    const isExpanded = expandedLogId === log._id;
+                    return (
+                      <React.Fragment key={log._id}>
+                        <tr className="hover:bg-surface-50/50 transition-colors">
+                          <td className="px-4 py-3.5 whitespace-nowrap text-sm text-surface-700">
+                            {formatDate(log.createdAt, true)}
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-sm text-surface-700">
+                            <span className="font-medium text-surface-900">{log.user?.fullName || 'System'}</span>
+                            <span className="block text-xs text-surface-500">{log.user?.email || '—'}</span>
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-sm">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${
+                              log.action.includes('DELETE') ? 'bg-error-50 text-error-700' :
+                              log.action.includes('CREATE') ? 'bg-success-50 text-success-700' :
+                              'bg-primary-50 text-primary-700'
+                            }`}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-sm text-surface-700">
+                            <span className="font-medium">{log.entityType}</span>
+                            <span className="block text-xs font-mono text-surface-400">{log.entityId}</span>
+                          </td>
+                          <td className="px-4 py-3.5 whitespace-nowrap text-right text-sm">
+                            <button
+                              onClick={() => toggleExpand(log._id)}
+                              className="text-primary-600 hover:text-primary-900 font-medium inline-flex items-center gap-1 focus-ring"
+                            >
+                              {isExpanded ? <EyeOff size={16} /> : <Eye size={16} />}
+                              {isExpanded ? 'Hide' : 'View'}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-surface-50/50">
+                            <td colSpan="5" className="px-6 py-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono text-left">
+                                <div className="border border-border rounded p-3 bg-surface">
+                                  <span className="block font-bold text-surface-600 mb-1.5 uppercase tracking-wider text-[10px]">Previous Value</span>
+                                  {log.oldValue ? (
+                                    <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap">{JSON.stringify(log.oldValue, null, 2)}</pre>
+                                  ) : (
+                                    <span className="text-surface-400 italic">None</span>
+                                  )}
+                                </div>
+                                <div className="border border-border rounded p-3 bg-surface">
+                                  <span className="block font-bold text-surface-600 mb-1.5 uppercase tracking-wider text-[10px]">New Value</span>
+                                  {log.newValue ? (
+                                    <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap">{JSON.stringify(log.newValue, null, 2)}</pre>
+                                  ) : (
+                                    <span className="text-surface-400 italic">None</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-3 flex gap-4 text-xs text-surface-500 text-left">
+                                <span><strong>IP Address:</strong> {log.ipAddress || 'Unknown'}</span>
+                                <span><strong>User Agent:</strong> {log.userAgent || 'Unknown'}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-sm text-surface-500">Total logs: <strong>{total}</strong></span>
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

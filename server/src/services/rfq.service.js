@@ -3,6 +3,8 @@ const PurchaseRequest = require("../models/PurchaseRequest");
 const Vendor = require("../models/Vendor");
 const Counter = require("../models/Counter");
 const ApiError = require("../utils/ApiError");
+const escapeRegex = require("../utils/escapeRegex");
+const { logEvent } = require("./audit.service");
 
 /**
  * Generate Next RFQ Code
@@ -120,6 +122,15 @@ const createRFQ = async (rfqData, user) => {
   });
 
   console.log(`[LOG] RFQ Created: ${newRFQ.rfqNumber} for PR-${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "CREATE_RFQ",
+    entityType: "RFQ",
+    entityId: newRFQ._id,
+    newValue: newRFQ.toObject(),
+  });
+
   return newRFQ;
 };
 
@@ -146,8 +157,18 @@ const updateRFQ = async (id, updateData, user) => {
   if (updateData.description !== undefined) rfq.description = updateData.description;
   if (updateData.quotationDeadline) rfq.quotationDeadline = updateData.quotationDeadline;
 
+  const oldVal = rfq.toObject();
   rfq.updatedBy = user._id;
   await rfq.save();
+
+  await logEvent({
+    userId: user._id,
+    action: "UPDATE_RFQ",
+    entityType: "RFQ",
+    entityId: id,
+    oldValue: oldVal,
+    newValue: rfq.toObject(),
+  });
 
   return rfq;
 };
@@ -173,13 +194,12 @@ const getRFQs = async (query) => {
   if (quotationDeadline) filter.quotationDeadline = { $lte: new Date(quotationDeadline) };
 
   if (search) {
+    const escaped = escapeRegex(search);
     filter.$or = [
-      { rfqNumber: { $regex: search, $options: "i" } },
-      { title: { $regex: search, $options: "i" } },
-      { "purchaseRequestSnapshot.requestNumber": { $regex: search, $options: "i" } }
+      { rfqNumber: { $regex: escaped, $options: "i" } },
+      { title: { $regex: escaped, $options: "i" } },
+      { "purchaseRequestSnapshot.requestNumber": { $regex: escaped, $options: "i" } }
     ];
-    // To search by vendor name, we might need aggregation. 
-    // Given the constraints and typical Mongoose patterns, if we need full Vendor search, we might look up matching vendors first.
   }
 
   let sortObj = { createdAt: -1 };
@@ -246,8 +266,19 @@ const sendRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
+  const oldVal = rfq.toObject();
   await rfq.save();
   console.log(`[LOG] RFQ Sent: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "SEND_RFQ",
+    entityType: "RFQ",
+    entityId: rfq._id,
+    oldValue: oldVal,
+    newValue: rfq.toObject(),
+  });
+
   return rfq;
 };
 
@@ -271,8 +302,19 @@ const closeRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
+  const oldVal = rfq.toObject();
   await rfq.save();
   console.log(`[LOG] RFQ Closed: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "CLOSE_RFQ",
+    entityType: "RFQ",
+    entityId: rfq._id,
+    oldValue: oldVal,
+    newValue: rfq.toObject(),
+  });
+
   return rfq;
 };
 
@@ -295,8 +337,19 @@ const cancelRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
+  const oldVal = rfq.toObject();
   await rfq.save();
   console.log(`[LOG] RFQ Cancelled: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "CANCEL_RFQ",
+    entityType: "RFQ",
+    entityId: rfq._id,
+    oldValue: oldVal,
+    newValue: rfq.toObject(),
+  });
+
   return rfq;
 };
 
@@ -307,11 +360,21 @@ const deleteRFQ = async (id, user) => {
   const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
+  const oldVal = rfq.toObject();
   rfq.isDeleted = true;
   rfq.updatedBy = user._id;
   await rfq.save();
 
   console.log(`[LOG] RFQ Deleted: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId: user._id,
+    action: "DELETE_RFQ",
+    entityType: "RFQ",
+    entityId: rfq._id,
+    oldValue: oldVal,
+  });
+
   return true;
 };
 

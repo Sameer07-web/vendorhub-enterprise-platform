@@ -3,6 +3,8 @@ const RFQ = require('../models/RFQ');
 const Vendor = require('../models/Vendor');
 const Counter = require('../models/Counter');
 const ApiError = require('../utils/ApiError');
+const escapeRegex = require('../utils/escapeRegex');
+const { logEvent } = require('./audit.service');
 
 /**
  * Generate Next Quotation Number
@@ -108,6 +110,14 @@ const createQuotation = async (quotationBody, userId) => {
 
   console.log(`[BUSINESS EVENT] Quotation Created: ${quotationNumber} for RFQ: ${rfqDoc.rfqNumber} by Vendor: ${vendorDoc.vendorCode}`);
 
+  await logEvent({
+    userId,
+    action: "CREATE_QUOTATION",
+    entityType: "Quotation",
+    entityId: quotation._id,
+    newValue: quotation.toObject(),
+  });
+
   return quotation;
 };
 
@@ -121,9 +131,10 @@ const getQuotations = async (filter = {}, options = {}) => {
   const query = { isDeleted: false, ...filter };
 
   if (search) {
+    const escaped = escapeRegex(search);
     query.$or = [
-      { quotationNumber: { $regex: search, $options: 'i' } },
-      { 'vendorSnapshot.companyName': { $regex: search, $options: 'i' } }
+      { quotationNumber: { $regex: escaped, $options: 'i' } },
+      { 'vendorSnapshot.companyName': { $regex: escaped, $options: 'i' } }
     ];
   }
 
@@ -190,10 +201,21 @@ const updateQuotation = async (id, updateBody, userId) => {
     throw new ApiError(400, 'validUntil cannot be before quotationDate');
   }
 
+  const oldVal = quotation.toObject();
   Object.assign(quotation, updateBody);
   quotation.updatedBy = userId;
 
   await quotation.save();
+
+  await logEvent({
+    userId,
+    action: "UPDATE_QUOTATION",
+    entityType: "Quotation",
+    entityId: id,
+    oldValue: oldVal,
+    newValue: quotation.toObject(),
+  });
+
   return quotation;
 };
 
@@ -216,11 +238,21 @@ const reviewQuotation = async (id, reviewBody, userId) => {
 
   quotation.reviewedBy = userId;
   quotation.reviewedAt = new Date();
+  const oldVal = quotation.toObject();
   quotation.updatedBy = userId;
 
   await quotation.save();
 
   console.log(`[BUSINESS EVENT] Quotation Reviewed: ${quotation.quotationNumber}`);
+
+  await logEvent({
+    userId,
+    action: "REVIEW_QUOTATION",
+    entityType: "Quotation",
+    entityId: id,
+    oldValue: oldVal,
+    newValue: quotation.toObject(),
+  });
 
   return quotation;
 };
@@ -243,6 +275,7 @@ const selectWinningQuotation = async (id, userId) => {
     throw new ApiError(409, `A winning quotation (${existingWinner.quotationNumber}) has already been selected for this RFQ`);
   }
 
+  const oldVal = quotation.toObject();
   // Set as Winner
   quotation.isWinner = true;
   quotation.status = 'SELECTED';
@@ -257,6 +290,15 @@ const selectWinningQuotation = async (id, userId) => {
 
   console.log(`[BUSINESS EVENT] Quotation Selected: ${quotation.quotationNumber} for RFQ ${rfqId}`);
 
+  await logEvent({
+    userId,
+    action: "AWARD_RFQ", // Matching the action requested: award RFQ
+    entityType: "Quotation",
+    entityId: quotation._id,
+    oldValue: oldVal,
+    newValue: quotation.toObject(),
+  });
+
   return quotation;
 };
 
@@ -270,6 +312,7 @@ const deleteQuotation = async (id, userId) => {
     throw new ApiError(400, 'Cannot delete a winning quotation');
   }
 
+  const oldVal = quotation.toObject();
   quotation.isDeleted = true;
   quotation.updatedBy = userId;
   await quotation.save();
@@ -284,6 +327,14 @@ const deleteQuotation = async (id, userId) => {
   }
 
   console.log(`[BUSINESS EVENT] Quotation Deleted: ${quotation.quotationNumber}`);
+
+  await logEvent({
+    userId,
+    action: "DELETE_QUOTATION",
+    entityType: "Quotation",
+    entityId: quotation._id,
+    oldValue: oldVal,
+  });
 
   return quotation;
 };

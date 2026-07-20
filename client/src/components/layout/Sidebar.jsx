@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, FileSearch, ShoppingCart, Settings, X, ClipboardCheck, Hexagon } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, FileSearch, ShoppingCart, Settings, X, ClipboardCheck, Hexagon, User } from 'lucide-react';
 import { isManager, isAdmin } from '../../utils/permissions';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -11,6 +11,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     ...(isManager() || isAdmin() ? [{ label: 'Approvals', path: '/app/purchase-requests/approval', icon: ClipboardCheck }] : []),
     { label: 'RFQs', path: '/app/rfqs', icon: FileSearch },
     { label: 'Purchase Orders', path: '/app/purchase-orders', icon: ShoppingCart },
+    { label: 'Quotations', path: '/app/quotations', icon: ClipboardCheck },
+    { label: 'Profile', path: '/app/profile', icon: User },
   ];
   
   const bottomNavItems = [

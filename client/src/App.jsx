@@ -38,6 +38,7 @@ const CreateRFQ = lazy(() => import('./features/rfq/pages/CreateRFQ'));
 const EditRFQ = lazy(() => import('./features/rfq/pages/EditRFQ'));
 const RFQDetails = lazy(() => import('./features/rfq/pages/RFQDetails'));
 const QuoteComparison = lazy(() => import('./features/rfq/pages/QuoteComparison'));
+const QuotationList = lazy(() => import('./features/rfq/pages/QuotationList'));
 
 const Profile = lazy(() => import('./features/profile/pages/Profile'));
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
@@ -95,6 +96,14 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Root redirects to AppLayout counterparts */}
+              <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
+              <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+              <Route path="/vendors" element={<Navigate to="/app/vendors" replace />} />
+              <Route path="/purchase-requests" element={<Navigate to="/app/purchase-requests" replace />} />
+              <Route path="/rfqs" element={<Navigate to="/app/rfqs" replace />} />
+              <Route path="/quotations" element={<Navigate to="/app/quotations" replace />} />
               
               {/* Protected Dashboard Routes */}
               <Route path="/app" element={
@@ -125,7 +134,8 @@ function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="help" element={<Help />} />
                 
-                <Route path="purchase-orders" element={<Placeholder title="Purchase Orders" />} />
+                <Route path="purchase-orders" element={<Navigate to="/app/purchase-requests" replace />} />
+                <Route path="quotations" element={<QuotationList />} />
               </Route>
 
               {/* Error Pages */}

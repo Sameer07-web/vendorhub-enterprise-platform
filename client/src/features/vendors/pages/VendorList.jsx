@@ -18,7 +18,7 @@ const VendorList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, totalPages: 1 });
-  
+
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
@@ -39,8 +39,9 @@ const VendorList = () => {
         category,
         sort
       };
-      
+
       const response = await getVendors(params);
+
       if (response.success) {
         setVendors(response.data.vendors);
         setPagination({
@@ -69,7 +70,7 @@ const VendorList = () => {
 
   const handleConfirmDelete = async () => {
     if (!vendorToDelete) return;
-    
+
     try {
       setIsDeleting(true);
       await deleteVendor(vendorToDelete._id);
@@ -121,7 +122,7 @@ const VendorList = () => {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-12">
-      <PageHeader 
+      <PageHeader
         title="Vendors"
         description="Manage your enterprise vendors and suppliers."
         action={
@@ -134,34 +135,34 @@ const VendorList = () => {
       <div className="bg-white p-5 rounded-lg shadow-sm border border-border space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-1">
-            <SearchBar 
-              placeholder="Search vendors..." 
-              onSearch={(val) => { setSearch(val); setPagination(prev => ({ ...prev, page: 1 })); }} 
+            <SearchBar
+              placeholder="Search vendors..."
+              onSearch={(val) => { setSearch(val); setPagination(prev => ({ ...prev, page: 1 })); }}
             />
           </div>
-          <Select 
-            options={statusOptions} 
-            value={status} 
-            onChange={(e) => { setStatus(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }} 
+          <Select
+            options={statusOptions}
+            value={status}
+            onChange={(e) => { setStatus(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
             className="w-full"
           />
-          <Select 
-            options={categoryOptions} 
-            value={category} 
-            onChange={(e) => { setCategory(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }} 
+          <Select
+            options={categoryOptions}
+            value={category}
+            onChange={(e) => { setCategory(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
             className="w-full"
           />
-          <Select 
-            options={sortOptions} 
-            value={sort} 
-            onChange={(e) => { setSort(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }} 
+          <Select
+            options={sortOptions}
+            value={sort}
+            onChange={(e) => { setSort(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
             className="w-full"
           />
         </div>
 
         {(search || status || category) && (
           <div className="flex justify-end animate-fade-in">
-            <button 
+            <button
               onClick={() => {
                 setSearch('');
                 setStatus('');
@@ -177,8 +178,8 @@ const VendorList = () => {
       </div>
 
       {error ? (
-        <EmptyState 
-          title="System Error" 
+        <EmptyState
+          title="System Error"
           message={error}
           actionLabel="Try Again"
           onAction={fetchVendors}
@@ -186,8 +187,8 @@ const VendorList = () => {
       ) : (
         <div className="flex flex-col gap-4">
           {vendors.length === 0 && !loading ? (
-            <EmptyState 
-              title="No vendors found" 
+            <EmptyState
+              title="No vendors found"
               message="We couldn't find any vendors matching your criteria. Try adjusting your filters or add a new vendor."
               icon={Users}
               actionLabel="Create Vendor"
@@ -202,7 +203,7 @@ const VendorList = () => {
             />
           ) : (
             <div className="bg-white rounded-lg shadow-sm border border-border overflow-hidden">
-              <VendorTable 
+              <VendorTable
                 vendors={vendors}
                 isLoading={loading}
                 onRowClick={(row) => navigate(`/app/vendors/${row._id}`)}
@@ -211,16 +212,16 @@ const VendorList = () => {
             </div>
           )}
           {!loading && vendors.length > 0 && (
-            <Pagination 
-              currentPage={pagination.page} 
-              totalPages={pagination.totalPages} 
-              onPageChange={handlePageChange} 
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
             />
           )}
         </div>
       )}
 
-      <ConfirmDialog 
+      <ConfirmDialog
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}

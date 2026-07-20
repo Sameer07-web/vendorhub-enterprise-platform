@@ -10,9 +10,21 @@ requiredEnvVars.forEach((envVar) => {
   }
 });
 
+process.on("unhandledRejection", (err) => {
+  console.error(`[UNHANDLED REJECTION] Shutting down: ${err.message}`);
+  console.error(err.stack);
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error(`[UNCAUGHT EXCEPTION] Shutting down: ${err.message}`);
+  console.error(err.stack);
+  process.exit(1);
+});
+
 connectDB();
 const PORT = process.env.PORT;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

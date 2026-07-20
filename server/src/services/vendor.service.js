@@ -1,6 +1,8 @@
 const Vendor = require("../models/Vendor");
 const Counter = require("../models/Counter");
 const ApiError = require("../utils/ApiError");
+const escapeRegex = require("../utils/escapeRegex");
+const { logEvent } = require("./audit.service");
 
 /**
  * Generate Next Vendor Code safely using Counters collection
@@ -35,7 +37,7 @@ const checkDuplicates = async (companyName, email, gstNumber, excludeVendorId = 
 
   // We have to use regex for case-insensitive exact match on company name if not explicitly stored normalized
   if (normCompany) {
-    query.$or.push({ companyName: { $regex: new RegExp(`^${normCompany}$`, "i") } });
+    query.$or.push({ companyName: { $regex: new RegExp(`^${escapeRegex(normCompany)}$`, "i") } });
   }
   if (normEmail) {
     query.$or.push({ email: normEmail });
@@ -85,6 +87,14 @@ const createVendor = async (vendorData, userId) => {
 
   console.log(`[LOG] Vendor Created: ${vendor._id} by User: ${userId} at ${new Date().toISOString()}`);
 
+  await logEvent({
+    userId,
+    action: "CREATE_VENDOR",
+    entityType: "Vendor",
+    entityId: vendor._id,
+    newValue: vendor.toObject(),
+  });
+
   return vendor;
 };
 
@@ -113,11 +123,12 @@ const getVendors = async (query) => {
 
   // Search logic
   if (search) {
+    const escaped = escapeRegex(search);
     filter.$or = [
-      { vendorCode: { $regex: search, $options: "i" } },
-      { companyName: { $regex: search, $options: "i" } },
-      { gstNumber: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
+      { vendorCode: { $regex: escaped, $options: "i" } },
+      { companyName: { $regex: escaped, $options: "i" } },
+      { gstNumber: { $regex: escaped, $options: "i" } },
+      { email: { $regex: escaped, $options: "i" } },
     ];
   }
 
@@ -186,6 +197,7 @@ const updateVendor = async (vendorId, updateData, userId) => {
   if (updateData.email) updateData.email = updateData.email.trim().toLowerCase();
   if (updateData.gstNumber) updateData.gstNumber = updateData.gstNumber.replace(/\s+/g, '').toUpperCase();
 
+  const oldVal = vendor.toObject();
   updateData.updatedBy = userId;
 
   const updatedVendor = await Vendor.findByIdAndUpdate(vendorId, updateData, {
@@ -194,6 +206,15 @@ const updateVendor = async (vendorId, updateData, userId) => {
   });
 
   console.log(`[LOG] Vendor Updated: ${vendorId} by User: ${userId} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId,
+    action: "UPDATE_VENDOR",
+    entityType: "Vendor",
+    entityId: vendorId,
+    oldValue: oldVal,
+    newValue: updatedVendor.toObject(),
+  });
 
   return updatedVendor;
 };
@@ -222,11 +243,20 @@ const deleteVendor = async (vendorId, userId) => {
     throw new ApiError(400, "Cannot delete vendor as it is referenced in other modules");
   }
 
+  const oldVal = vendor.toObject();
   vendor.isDeleted = true;
   vendor.updatedBy = userId;
   await vendor.save();
 
   console.log(`[LOG] Vendor Deleted (Soft): ${vendorId} by User: ${userId} at ${new Date().toISOString()}`);
+
+  await logEvent({
+    userId,
+    action: "DELETE_VENDOR",
+    entityType: "Vendor",
+    entityId: vendorId,
+    oldValue: oldVal,
+  });
 
   return true;
 };

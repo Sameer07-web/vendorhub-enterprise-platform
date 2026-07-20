@@ -83,6 +83,10 @@ const vendorSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance optimization
+vendorSchema.index({ isDeleted: 1, status: 1 });
+vendorSchema.index({ vendorCategory: 1 });
+
 const Vendor = mongoose.model("Vendor", vendorSchema);
 
 module.exports = Vendor;

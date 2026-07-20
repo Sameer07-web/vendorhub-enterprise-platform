@@ -31,6 +31,16 @@ const decodeToken = (token) => {
 export const getCurrentUser = () => {
   const token = getToken();
   if (!token) return null;
+  
+  const userStr = localStorage.getItem('user');
+  if (userStr) {
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      // Fallback to token decoding
+    }
+  }
+  
   const decoded = decodeToken(token);
   // Expected to return { _id, role, ... }
   return decoded || null;
