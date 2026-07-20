@@ -1,6 +1,7 @@
 require("dotenv").config();
 const connectDB = require("./config/database");
 const app = require("./app");
+const { initializeSocket } = require("./socket/socketServer");
 
 const requiredEnvVars = ["PORT", "MONGO_URI", "JWT_SECRET", "JWT_EXPIRES_IN"];
 requiredEnvVars.forEach((envVar) => {
@@ -27,4 +28,7 @@ const PORT = process.env.PORT;
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+});
+
+// Initialize Socket.IO
+initializeSocket(server);

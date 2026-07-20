@@ -5,6 +5,7 @@ const Counter = require('../models/Counter');
 const ApiError = require('../utils/ApiError');
 const escapeRegex = require('../utils/escapeRegex');
 const { logEvent } = require('./audit.service');
+const notificationService = require('./notification.service');
 
 /**
  * Generate Next Quotation Number
@@ -298,6 +299,25 @@ const selectWinningQuotation = async (id, userId) => {
     oldValue: oldVal,
     newValue: quotation.toObject(),
   });
+
+  // Notify RFQ Creator that a vendor was awarded
+  if (quotation.rfq.createdBy && quotation.rfq.createdBy.toString() !== userId.toString()) {
+    await notificationService.createNotification({
+      recipient: quotation.rfq.createdBy,
+      sender: userId,
+      type: "RFQ_AWARDED",
+      title: "RFQ Awarded",
+      message: `Quotation ${quotation.quotationNumber} from ${quotation.vendor.companyName || quotation.vendorSnapshot.companyName} was awarded for RFQ ${quotation.rfq.rfqNumber}.`,
+      priority: "HIGH",
+      entityType: "RFQ",
+      entityId: rfqId,
+      actionUrl: `/app/rfqs/${rfqId}`,
+      metadata: {
+        rfqNumber: quotation.rfq.rfqNumber,
+        title: quotation.rfq.title
+      }
+    });
+  }
 
   return quotation;
 };

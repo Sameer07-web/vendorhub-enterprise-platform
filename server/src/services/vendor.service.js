@@ -3,6 +3,8 @@ const Counter = require("../models/Counter");
 const ApiError = require("../utils/ApiError");
 const escapeRegex = require("../utils/escapeRegex");
 const { logEvent } = require("./audit.service");
+const notificationService = require("./notification.service");
+const User = require("../models/User");
 
 /**
  * Generate Next Vendor Code safely using Counters collection
@@ -94,6 +96,23 @@ const createVendor = async (vendorData, userId) => {
     entityId: vendor._id,
     newValue: vendor.toObject(),
   });
+
+  // Notify Managers
+  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const notificationPromises = managers.map(mgr => 
+    notificationService.createNotification({
+      recipient: mgr._id,
+      sender: userId,
+      type: "VENDOR_CREATED",
+      title: "New Vendor Created",
+      message: `Vendor ${vendor.companyName} (${vendor.vendorCode}) has been added to the system.`,
+      priority: "LOW",
+      entityType: "Vendor",
+      entityId: vendor._id,
+      actionUrl: `/app/vendors/${vendor._id}`,
+    })
+  );
+  await Promise.all(notificationPromises);
 
   return vendor;
 };
@@ -215,6 +234,23 @@ const updateVendor = async (vendorId, updateData, userId) => {
     oldValue: oldVal,
     newValue: updatedVendor.toObject(),
   });
+
+  // Notify Managers
+  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const notificationPromises = managers.map(mgr => 
+    notificationService.createNotification({
+      recipient: mgr._id,
+      sender: userId,
+      type: "VENDOR_UPDATED",
+      title: "Vendor Profile Updated",
+      message: `Vendor ${updatedVendor.companyName} (${updatedVendor.vendorCode}) has been updated.`,
+      priority: "LOW",
+      entityType: "Vendor",
+      entityId: updatedVendor._id,
+      actionUrl: `/app/vendors/${updatedVendor._id}`,
+    })
+  );
+  await Promise.all(notificationPromises);
 
   return updatedVendor;
 };

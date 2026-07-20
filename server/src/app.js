@@ -16,6 +16,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const searchRoutes = require("./routes/search.routes");
 const userRoutes = require("./routes/user.routes");
 const healthRoutes = require("./routes/health.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use("/api/v1/quotations", quotationRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────
 app.use("/health", healthRoutes);

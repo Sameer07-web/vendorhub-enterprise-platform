@@ -24,3 +24,8 @@ export const resetPassword = async (token, newPassword) => {
   const response = await axiosInstance.post('/auth/reset-password', { token, newPassword });
   return response.data;
 };
+
+export const updatePreferences = async (preferencesData) => {
+  const response = await axiosInstance.patch('/auth/preferences/notifications', preferencesData);
+  return response.data;
+};

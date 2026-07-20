@@ -4,6 +4,8 @@ const Vendor = require("../models/Vendor");
 const ApiError = require("../utils/ApiError");
 const escapeRegex = require("../utils/escapeRegex");
 const { logEvent } = require("./audit.service");
+const notificationService = require("./notification.service");
+const User = require("../models/User");
 
 /**
  * Generate Next PR Code safely using Counters collection
@@ -14,7 +16,7 @@ const generatePRCode = async () => {
     { $inc: { seq: 1 } },
     { new: true, upsert: true }
   );
-  
+
   return `PR-${counter.seq.toString().padStart(6, "0")}`;
 };
 
@@ -65,15 +67,15 @@ const createPurchaseRequest = async (prData, user) => {
  * Get PRs (with search, filter, pagination, RBAC)
  */
 const getPurchaseRequests = async (query, user) => {
-  const { 
-    search, 
-    status, 
+  const {
+    search,
+    status,
     priority,
     department,
     createdBy,
-    sort = "Newest", 
-    page = 1, 
-    limit = 10 
+    sort = "Newest",
+    page = 1,
+    limit = 10
   } = query;
 
   const filter = { isDeleted: false };
@@ -212,6 +214,27 @@ const submitPurchaseRequest = async (id, user) => {
     newValue: pr.toObject(),
   });
 
+  // Notify Managers
+  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const notificationPromises = managers.map(mgr => 
+    notificationService.createNotification({
+      recipient: mgr._id,
+      sender: user._id,
+      type: "PR_SUBMITTED",
+      title: "New Purchase Request Submitted",
+      message: `PR ${pr.requestNumber} has been submitted by ${user.fullName || "User"} and is pending approval.`,
+      priority: "MEDIUM",
+      entityType: "PurchaseRequest",
+      entityId: pr._id,
+      actionUrl: `/app/purchase-requests/${pr._id}`,
+      metadata: {
+        prNumber: pr.requestNumber,
+        title: pr.title
+      }
+    })
+  );
+  await Promise.all(notificationPromises);
+
   return pr;
 };
 
@@ -232,7 +255,7 @@ const approvePurchaseRequest = async (id, comments, user) => {
   pr.approvedAt = new Date();
   pr.updatedBy = user._id;
   if (comments) pr.managerComments = comments;
-  
+
   await pr.save();
 
   console.log(`[LOG] Purchase Request Approved: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
@@ -244,6 +267,23 @@ const approvePurchaseRequest = async (id, comments, user) => {
     entityId: pr._id,
     oldValue: oldVal,
     newValue: pr.toObject(),
+  });
+
+  // Notify Creator
+  await notificationService.createNotification({
+    recipient: pr.createdBy,
+    sender: user._id,
+    type: "PR_APPROVED",
+    title: "Purchase Request Approved",
+    message: `Your Purchase Request ${pr.requestNumber} has been approved.`,
+    priority: "HIGH",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    actionUrl: `/app/purchase-requests/${pr._id}`,
+    metadata: {
+      prNumber: pr.requestNumber,
+      title: pr.title
+    }
   });
 
   return pr;
@@ -269,7 +309,7 @@ const rejectPurchaseRequest = async (id, comments, user) => {
   pr.approvedBy = user._id; // capturing the reviewer
   pr.updatedBy = user._id;
   pr.managerComments = comments;
-  
+
   await pr.save();
 
   console.log(`[LOG] Purchase Request Rejected: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
@@ -281,6 +321,23 @@ const rejectPurchaseRequest = async (id, comments, user) => {
     entityId: pr._id,
     oldValue: oldVal,
     newValue: pr.toObject(),
+  });
+
+  // Notify Creator
+  await notificationService.createNotification({
+    recipient: pr.createdBy,
+    sender: user._id,
+    type: "PR_REJECTED",
+    title: "Purchase Request Rejected",
+    message: `Your Purchase Request ${pr.requestNumber} has been rejected.`,
+    priority: "HIGH",
+    entityType: "PurchaseRequest",
+    entityId: pr._id,
+    actionUrl: `/app/purchase-requests/${pr._id}`,
+    metadata: {
+      prNumber: pr.requestNumber,
+      title: pr.title
+    }
   });
 
   return pr;

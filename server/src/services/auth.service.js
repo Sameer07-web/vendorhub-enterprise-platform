@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
+const notificationService = require("./notification.service");
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -40,6 +41,18 @@ const registerUser = async (userData) => {
 
   const userResponse = user.toObject();
   delete userResponse.password;
+
+  await notificationService.createNotification({
+    recipient: user._id,
+    type: "WELCOME",
+    title: "Welcome to VendorHub",
+    message: "Your enterprise account has been created successfully.",
+    priority: "MEDIUM",
+    entityType: "User",
+    entityId: user._id,
+    actionUrl: "/app/dashboard",
+    icon: "Shield",
+  });
 
   return {
     user: userResponse,
@@ -189,6 +202,16 @@ const resetPassword = async (token, newPassword) => {
   await user.save({ validateBeforeSave: false });
 
   console.log(`[LOG] Password reset completed for user: ${user.email} at ${new Date().toISOString()}`);
+
+  await notificationService.createNotification({
+    recipient: user._id,
+    type: "PASSWORD_RESET",
+    title: "Password Reset Successful",
+    message: "Your password has been reset successfully. If you did not perform this action, please contact support immediately.",
+    priority: "HIGH",
+    entityType: "User",
+    entityId: user._id,
+  });
 
   return { message: "Password has been reset successfully" };
 };

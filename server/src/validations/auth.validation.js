@@ -34,6 +34,24 @@ const updateProfileSchema = Joi.object({
   department: Joi.string().trim().optional().allow("", null)
 }).options({ stripUnknown: true, abortEarly: false });
 
+const updatePreferencesSchema = Joi.object({
+  email: Joi.object({
+    enabled: Joi.boolean(),
+    digest: Joi.string().valid("instant", "daily", "weekly")
+  }),
+  inApp: Joi.object({
+    enabled: Joi.boolean()
+  }),
+  categories: Joi.object({
+    purchaseRequests: Joi.boolean(),
+    rfqs: Joi.boolean(),
+    vendors: Joi.boolean(),
+    quotations: Joi.boolean(),
+    system: Joi.boolean(),
+    broadcasts: Joi.boolean()
+  })
+}).options({ stripUnknown: true, abortEarly: false });
+
 const changePasswordSchema = Joi.object({
   currentPassword: Joi.string().required().messages({
     "string.empty": "Current password is required"
@@ -75,6 +93,7 @@ module.exports = {
   loginSchema,
   updateProfileSchema,
   changePasswordSchema,
+  updatePreferencesSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
 };

@@ -32,7 +32,7 @@ const UserMenuDropdown = () => {
   const menuItems = [
     { icon: User, label: 'Profile', onClick: () => { navigate('/app/profile'); setIsOpen(false); } },
     { icon: Settings, label: 'Settings', onClick: () => { navigate('/app/settings'); setIsOpen(false); } },
-    { icon: Bell, label: 'Notifications', onClick: () => { navigate('/app/settings?tab=notifications'); setIsOpen(false); } },
+    { icon: Bell, label: 'Notification Settings', onClick: () => { navigate('/app/notifications/settings'); setIsOpen(false); } },
     { icon: Palette, label: 'Appearance', onClick: () => { navigate('/app/settings?tab=appearance'); setIsOpen(false); } },
     { icon: HelpCircle, label: 'Help & Support', onClick: () => { navigate('/app/help'); setIsOpen(false); }, divider: true },
     { icon: LogOut, label: 'Log out', onClick: handleLogout, danger: true },

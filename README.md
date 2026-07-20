@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-blue.svg?cacheSeconds=2592000" />
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.1.0-blue.svg?cacheSeconds=2592000" />
   <img alt="Build Status" src="https://img.shields.io/badge/build-passing-brightgreen.svg" />
   <img alt="Test Status" src="https://img.shields.io/badge/tests-passing-brightgreen.svg" />
   <img alt="Coverage" src="https://img.shields.io/badge/coverage-80%25-green.svg" />
@@ -25,7 +25,10 @@ Highlighting true enterprise capabilities:
 - **Quotations Comparison**: API-driven response simulation, allowing managers to compare pricing, delivery, and terms to award vendors.
 - **Dashboard Analytics**: Live KPIs and aggregated monthly spend charts.
 - **MongoDB Aggregations**: Highly optimized pipelines for real-time financial reporting.
-- **Audit Logs**: Immutable tracking of all CRUD events (who, what, when, IP).
+- **Real-Time Communication Platform**: Database-backed notification engine with Socket.IO for live updates.
+- **Multi-Channel Dispatcher**: Fire-and-forget notification delivery via WebSockets and Email (HTML templates).
+- **Communication Management**: Advanced user preferences (opt-ins/outs by category) and Admin Broadcasts with rate-limiting.
+- **Audit Logs**: Immutable tracking of all CRUD events and Admin Broadcasts (who, what, when, IP).
 - **Global Search**: System-wide unified search.
 - **Docker Orchestration**: Complete containerization for predictable environments.
 - **CI/CD & Automated Testing**: Full GitHub Actions pipeline with Jest/Vitest test suites.
@@ -44,6 +47,10 @@ graph TD
     Services --> DB[(MongoDB Atlas)]
     DB --> Aggregations[Aggregation Pipelines]
     Aggregations --> Client
+    Services --> Dispatcher[Notification Dispatcher]
+    Dispatcher --> Sockets[Socket.IO Gateway]
+    Dispatcher --> Email[Email Service]
+    Sockets --> Client
 ```
 
 ### Architecture Decisions
@@ -81,7 +88,7 @@ vendorhub-enterprise-platform/
 ## 💻 Technology Stack
 
 - **Frontend**: React 18, Vite, React Router v6, Recharts, Tailwind CSS v4, Lucide Icons.
-- **Backend**: Node.js, Express.js.
+- **Backend**: Node.js, Express.js, Socket.IO.
 - **Database**: MongoDB (Mongoose ODM).
 - **Testing**: Jest, Supertest (Backend), Vitest, React Testing Library (Frontend).
 - **DevOps**: Docker, Docker Compose, GitHub Actions.
@@ -147,6 +154,7 @@ npm run dev
 | `/api/v1/rfqs` | POST | Dispatch RFQ | Manager, Admin |
 | `/api/v1/quotations/:id/award` | POST | Award quotation | Manager, Admin |
 | `/api/v1/dashboard/kpis` | GET | Fetch system KPIs | Any authenticated |
+| `/api/v1/notifications/broadcast` | POST | Send system-wide broadcast | Admin |
 
 ---
 
@@ -205,12 +213,12 @@ docker compose up --build
 
 ---
 
-## 🗺️ Future Roadmap (v1.1.0)
+## 🗺️ Future Roadmap (v1.2.0)
 
-- [ ] Email & SMS notification dispatch system.
-- [ ] AWS S3 integration for vendor compliance document uploads.
-- [ ] Advanced CSV/Excel export for financial reports.
-- [ ] Multi-currency support in purchase requests.
+- [ ] Background Queues (BullMQ / RabbitMQ) for reliable notification retries.
+- [ ] Read Analytics and Delivery Tracking for Admin Broadcasts.
+- [ ] Vendor Compliance Portal (AWS S3 Document Uploads).
+- [ ] Push Notifications & PWA Support.
 
 ---
-*VendorHub Enterprise Platform — Final v1.0.0 Release*
+*VendorHub Enterprise Platform — Release v1.1.0*

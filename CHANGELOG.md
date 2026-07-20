@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-20
+
+### Added
+- **Enterprise Notification Platform**: Implemented a comprehensive database-backed notification system.
+- **Real-Time Communication**: Integrated Socket.IO with JWT handshakes and room-based architecture for live updates.
+- **Multi-channel Dispatcher**: Created a robust delivery engine supporting asynchronous, fire-and-forget delivery via WebSockets and Email.
+- **Communication Management**: Introduced user notification preferences allowing granular opt-ins/opt-outs by category.
+- **Admin Broadcasts**: Added capability for admins to dispatch system-wide announcements to targeted user segments, complete with rate limiting and audit logging.
+- **Notification Center UI**: Added real-time search, category filtering, and live previews for broadcasts.
+
+### Security
+- Added secure JWT authentication directly into the Socket.IO handshake.
+- Enforced Role-Based Access Control (RBAC) on the new Admin Broadcast API.
+- Implemented in-memory rate limiting specifically for broadcast dispatching to prevent abuse.
+
 ## [1.0.0] - 2026-07-20
 
 ### Added
@@ -36,5 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 *(Initial release candidate features rolled into v1.0.0)*
 
-[Unreleased]: https://github.com/yourusername/vendorhub-enterprise-platform/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/yourusername/vendorhub-enterprise-platform/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/yourusername/vendorhub-enterprise-platform/releases/tag/v1.1.0
 [1.0.0]: https://github.com/yourusername/vendorhub-enterprise-platform/releases/tag/v1.0.0

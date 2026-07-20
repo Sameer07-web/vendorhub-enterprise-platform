@@ -5,6 +5,8 @@ const Counter = require("../models/Counter");
 const ApiError = require("../utils/ApiError");
 const escapeRegex = require("../utils/escapeRegex");
 const { logEvent } = require("./audit.service");
+const notificationService = require("./notification.service");
+const User = require("../models/User");
 
 /**
  * Generate Next RFQ Code
@@ -278,6 +280,27 @@ const sendRFQ = async (id, user) => {
     oldValue: oldVal,
     newValue: rfq.toObject(),
   });
+
+  // Notify Managers that RFQ has been sent
+  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const notificationPromises = managers.map(mgr => 
+    notificationService.createNotification({
+      recipient: mgr._id,
+      sender: user._id,
+      type: "RFQ_INVITED",
+      title: "RFQ Sent to Vendors",
+      message: `RFQ ${rfq.rfqNumber} has been sent to ${rfq.vendors.length} vendors for PR-${rfq.purchaseRequestSnapshot.requestNumber}.`,
+      priority: "MEDIUM",
+      entityType: "RFQ",
+      entityId: rfq._id,
+      actionUrl: `/app/rfqs/${rfq._id}`,
+      metadata: {
+        rfqNumber: rfq.rfqNumber,
+        title: rfq.title
+      }
+    })
+  );
+  await Promise.all(notificationPromises);
 
   return rfq;
 };

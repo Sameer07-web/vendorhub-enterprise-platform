@@ -48,6 +48,24 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+
+    notificationPreferences: {
+      email: {
+        enabled: { type: Boolean, default: true },
+        digest: { type: String, enum: ["instant", "daily", "weekly"], default: "instant" }
+      },
+      inApp: {
+        enabled: { type: Boolean, default: true }
+      },
+      categories: {
+        purchaseRequests: { type: Boolean, default: true },
+        rfqs: { type: Boolean, default: true },
+        vendors: { type: Boolean, default: true },
+        quotations: { type: Boolean, default: true },
+        system: { type: Boolean, default: true },
+        broadcasts: { type: Boolean, default: true }
+      }
+    },
   },
   {
     timestamps: true,

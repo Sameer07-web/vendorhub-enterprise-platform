@@ -60,6 +60,45 @@ const resetPassword = catchAsync(async (req, res) => {
   );
 });
 
+/**
+ * @desc    Update notification preferences
+ * @route   PATCH /api/v1/auth/preferences/notifications
+ * @access  Private
+ */
+const updatePreferences = catchAsync(async (req, res) => {
+  // In a real app we might put this in a userService, but this is simple enough for the controller
+  const user = await require("../models/User").findById(req.user._id);
+  
+  if (req.body.email) {
+    user.notificationPreferences.email = {
+      ...user.notificationPreferences.email,
+      ...req.body.email
+    };
+  }
+  
+  if (req.body.inApp) {
+    user.notificationPreferences.inApp = {
+      ...user.notificationPreferences.inApp,
+      ...req.body.inApp
+    };
+  }
+
+  if (req.body.categories) {
+    user.notificationPreferences.categories = {
+      ...user.notificationPreferences.categories,
+      ...req.body.categories
+    };
+  }
+
+  await user.save();
+
+  res.status(200).json(
+    new ApiResponse(200, "Preferences updated successfully", {
+      notificationPreferences: user.notificationPreferences
+    })
+  );
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -68,4 +107,5 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  updatePreferences,
 };

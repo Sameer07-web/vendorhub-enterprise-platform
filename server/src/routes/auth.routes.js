@@ -9,6 +9,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  updatePreferences,
 } = require("../controllers/auth.controller");
 
 const { protect } = require("../middleware/auth.middleware");
@@ -18,6 +19,7 @@ const {
   loginSchema,
   updateProfileSchema,
   changePasswordSchema,
+  updatePreferencesSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
 } = require("../validations/auth.validation");
@@ -32,5 +34,6 @@ router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.get("/me", protect, getMe);
 router.patch("/profile", protect, validate(updateProfileSchema), updateProfile);
 router.patch("/change-password", protect, validate(changePasswordSchema), changePassword);
+router.patch("/preferences/notifications", protect, validate(updatePreferencesSchema), updatePreferences);
 
 module.exports = router;

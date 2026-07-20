@@ -2,6 +2,7 @@ const Vendor = require("../models/Vendor");
 const PurchaseRequest = require("../models/PurchaseRequest");
 const RFQ = require("../models/RFQ");
 const Quotation = require("../models/Quotation");
+const Notification = require("../models/Notification");
 
 /**
  * Get all dashboard statistics from live MongoDB data
@@ -132,46 +133,26 @@ const getDashboardStats = async (userId) => {
     date: pr.createdAt,
   }));
 
-  // Recent activity (latest changes across PRs, RFQs, Vendors)
-  const [recentPRs, recentRFQs, recentVendors] = await Promise.all([
-    PurchaseRequest.find({ isDeleted: false })
-      .sort({ updatedAt: -1 })
-      .limit(3)
-      .populate("createdBy", "fullName")
-      .lean(),
-    RFQ.find({ isDeleted: false }).sort({ updatedAt: -1 }).limit(3).lean(),
-    Vendor.find({ isDeleted: false }).sort({ updatedAt: -1 }).limit(3).lean(),
-  ]);
+  // Recent activity (now powered by Notifications)
+  const recentNotifications = await Notification.find({ recipient: userId, isDeleted: false })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .lean();
 
-  const activityTimelineData = [];
+  const activityTimelineData = recentNotifications.map(notif => {
+    let type = "system";
+    if (["PR_APPROVED", "RFQ_AWARDED"].includes(notif.type)) type = "success";
+    if (["PR_REJECTED"].includes(notif.type)) type = "warning";
+    if (["PR_SUBMITTED", "RFQ_INVITED"].includes(notif.type)) type = "request";
 
-  recentPRs.forEach((pr) => {
-    let type = "request";
-    if (pr.status === "APPROVED") type = "success";
-    else if (pr.status === "REJECTED") type = "warning";
-
-    activityTimelineData.push({
-      id: pr._id,
+    return {
+      id: notif._id,
       type,
-      title: `PR ${pr.prId} — ${pr.status.replace("_", " ")}`,
-      description: pr.title,
-      time: pr.updatedAt,
-    });
+      title: notif.title,
+      description: notif.message,
+      time: notif.createdAt,
+    };
   });
-
-  recentRFQs.forEach((rfq) => {
-    activityTimelineData.push({
-      id: rfq._id,
-      type: rfq.status === "CLOSED" ? "award" : "request",
-      title: `RFQ ${rfq.rfqId} — ${rfq.status.replace("_", " ")}`,
-      description: rfq.title,
-      time: rfq.updatedAt,
-    });
-  });
-
-  // Sort by time descending and take latest 5
-  activityTimelineData.sort((a, b) => new Date(b.time) - new Date(a.time));
-  const latestActivity = activityTimelineData.slice(0, 5);
 
   // Recent purchase requests table (top 5)
   const recentPurchaseRequests = await PurchaseRequest.find({ isDeleted: false })
@@ -208,7 +189,7 @@ const getDashboardStats = async (userId) => {
     vendorDistributionData,
     recentPurchaseRequests: recentPRsData,
     pendingApprovals: pendingApprovalsData,
-    activityTimelineData: latestActivity,
+    activityTimelineData,
   };
 };
 

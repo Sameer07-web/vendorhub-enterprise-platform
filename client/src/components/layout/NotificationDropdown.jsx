@@ -1,13 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, X, Info, AlertTriangle, CheckCircle } from 'lucide-react';
-import Button from '../common/Button';
-import { getDashboardStats } from '../../api/dashboard.api';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Bell, Check, X, Info, AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead, clearRead } from '../../api/notification.api';
+import { useSocket } from '../../contexts/SocketContext';
+import toast from 'react-hot-toast';
 
-const getIcon = (type) => {
+const getIcon = (type, iconStr) => {
+  if (iconStr === 'Shield') return <CheckCircle className="text-primary-500 w-5 h-5" />;
   switch (type) {
-    case 'approval': return <CheckCircle className="text-success-500 w-5 h-5" />;
-    case 'alert': return <AlertTriangle className="text-warning-500 w-5 h-5" />;
-    default: return <Info className="text-primary-500 w-5 h-5" />;
+    case 'PR_APPROVED':
+    case 'RFQ_AWARDED':
+      return <CheckCircle className="text-success-500 w-5 h-5" />;
+    case 'PR_REJECTED':
+      return <AlertTriangle className="text-error-500 w-5 h-5" />;
+    case 'PR_SUBMITTED':
+    case 'RFQ_INVITED':
+      return <Info className="text-primary-500 w-5 h-5" />;
+    case 'SYSTEM':
+      return <AlertTriangle className="text-warning-500 w-5 h-5" />;
+    default: return <Info className="text-surface-500 w-5 h-5" />;
   }
 };
 
@@ -30,11 +41,53 @@ const formatTimeAgo = (dateString) => {
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [readIds, setReadIds] = useState(new Set());
-  const [loaded, setLoaded] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
+  const { socket } = useSocket();
 
-  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await getUnreadCount();
+      if (res.success) setUnreadCount(res.data.count);
+    } catch (err) {
+      console.error('Failed to load unread count:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewNotification = (notif) => {
+      setUnreadCount(prev => prev + 1);
+      
+      // Update dropdown list if it's open
+      setNotifications(prev => {
+        const newList = [notif, ...prev];
+        return newList.slice(0, 5); // Keep top 5
+      });
+      
+      toast(notif.title, {
+        icon: '🔔',
+        style: {
+          borderRadius: '10px',
+          background: '#1E293B',
+          color: '#fff',
+        },
+      });
+    };
+
+    socket.on('new_notification', handleNewNotification);
+
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+  }, [socket]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -46,59 +99,62 @@ const NotificationDropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch notifications derived from dashboard data when dropdown opens
   useEffect(() => {
-    if (isOpen && !loaded) {
+    if (isOpen) {
       const fetchNotifications = async () => {
+        setLoading(true);
         try {
-          const res = await getDashboardStats();
+          const res = await getNotifications({ page: 1, limit: 5 }); // Just recent ones for dropdown
           if (res.success) {
-            const derived = [];
-            
-            // Pending approvals become notifications
-            (res.data.pendingApprovals || []).forEach((pr, i) => {
-              derived.push({
-                id: `approval-${pr._id || i}`,
-                type: 'approval',
-                title: `PR Pending Approval`,
-                message: `${pr.title} from ${pr.requester} requires your review.`,
-                time: pr.date,
-              });
-            });
-
-            // Recent activity items
-            (res.data.activityTimelineData || []).forEach((item, i) => {
-              derived.push({
-                id: `activity-${item.id || i}`,
-                type: item.type === 'warning' ? 'alert' : 'system',
-                title: item.title,
-                message: item.description,
-                time: item.time,
-              });
-            });
-
-            setNotifications(derived.slice(0, 8));
-            setLoaded(true);
+            setNotifications(res.data.notifications);
+            setUnreadCount(res.data.unreadCount);
           }
         } catch (err) {
           console.error('Failed to load notifications:', err);
+        } finally {
+          setLoading(false);
         }
       };
       fetchNotifications();
     }
-  }, [isOpen, loaded]);
+  }, [isOpen]);
 
-  const markAllRead = () => {
-    setReadIds(new Set(notifications.map(n => n.id)));
+  const handleMarkAllRead = async (e) => {
+    e.stopPropagation();
+    try {
+      await markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      toast.error("Failed to mark all as read");
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
-    setReadIds(new Set());
+  const handleClearRead = async (e) => {
+    e.stopPropagation();
+    try {
+      await clearRead();
+      setNotifications(prev => prev.filter(n => !n.isRead));
+    } catch (err) {
+      toast.error("Failed to clear read notifications");
+    }
   };
 
-  const markAsRead = (id) => {
-    setReadIds(prev => new Set([...prev, id]));
+  const handleNotificationClick = async (notif) => {
+    if (!notif.isRead) {
+      try {
+        await markAsRead(notif._id);
+        setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    
+    setIsOpen(false);
+    if (notif.actionUrl) {
+      navigate(notif.actionUrl);
+    }
   };
 
   return (
@@ -111,7 +167,9 @@ const NotificationDropdown = () => {
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-primary-500 rounded-full ring-2 ring-white"></span>
+          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-error-500 text-[10px] font-bold text-white ring-2 ring-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
         )}
       </button>
 
@@ -121,10 +179,10 @@ const NotificationDropdown = () => {
             <h3 className="font-semibold text-surface-900">Notifications</h3>
             {notifications.length > 0 && (
               <div className="flex gap-2">
-                <button onClick={markAllRead} className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors" title="Mark all read">
+                <button onClick={handleMarkAllRead} className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors" title="Mark all read">
                   <Check size={14} className="inline mr-1" />Read All
                 </button>
-                <button onClick={clearAll} className="text-xs font-medium text-surface-500 hover:text-error-600 transition-colors" title="Clear all">
+                <button onClick={handleClearRead} className="text-xs font-medium text-surface-500 hover:text-error-600 transition-colors" title="Clear read">
                   <X size={14} className="inline mr-1" />Clear
                 </button>
               </div>
@@ -132,7 +190,9 @@ const NotificationDropdown = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="p-4 text-center text-sm text-surface-500">Loading...</div>
+            ) : notifications.length === 0 ? (
               <div className="py-12 px-4 text-center">
                 <div className="w-12 h-12 bg-surface-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Bell className="text-surface-400 w-6 h-6" />
@@ -144,25 +204,25 @@ const NotificationDropdown = () => {
               <div className="divide-y divide-border">
                 {notifications.map((notif) => (
                   <div 
-                    key={notif.id} 
-                    className={`px-4 py-3 hover:bg-surface-50 transition-colors cursor-pointer flex gap-3 ${!readIds.has(notif.id) ? 'bg-primary-50/30' : ''}`}
-                    onClick={() => markAsRead(notif.id)}
+                    key={notif._id} 
+                    className={`px-4 py-3 hover:bg-surface-50 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? 'bg-primary-50/30' : ''}`}
+                    onClick={() => handleNotificationClick(notif)}
                   >
                     <div className="shrink-0 mt-0.5">
-                      {getIcon(notif.type)}
+                      {getIcon(notif.type, notif.icon)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm ${!readIds.has(notif.id) ? 'font-semibold text-surface-900' : 'font-medium text-surface-700'}`}>
+                      <p className={`text-sm ${!notif.isRead ? 'font-semibold text-surface-900' : 'font-medium text-surface-700'}`}>
                         {notif.title}
                       </p>
                       <p className="text-sm text-surface-600 mt-0.5 line-clamp-2 leading-snug">
                         {notif.message}
                       </p>
                       <p className="text-xs text-surface-400 mt-1.5 font-medium">
-                        {formatTimeAgo(notif.time)}
+                        {formatTimeAgo(notif.createdAt)}
                       </p>
                     </div>
-                    {!readIds.has(notif.id) && (
+                    {!notif.isRead && (
                       <div className="shrink-0 flex items-center">
                         <div className="w-2 h-2 rounded-full bg-primary-500"></div>
                       </div>
@@ -171,6 +231,15 @@ const NotificationDropdown = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="border-t border-border bg-surface-50 p-2 text-center">
+            <button 
+              onClick={() => { setIsOpen(false); navigate('/app/notifications'); }}
+              className="text-sm font-medium text-primary-600 hover:text-primary-700 w-full py-1 rounded hover:bg-primary-50 transition-colors flex items-center justify-center gap-1"
+            >
+              View all notifications <ExternalLink size={14} />
+            </button>
           </div>
         </div>
       )}

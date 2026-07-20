@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import { SocketProvider } from './contexts/SocketContext';
 import { Toaster } from 'react-hot-toast';
 
 import AdminLayout from './components/layout/AdminLayout';
@@ -43,6 +44,9 @@ const QuotationList = lazy(() => import('./features/rfq/pages/QuotationList'));
 const Profile = lazy(() => import('./features/profile/pages/Profile'));
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
 const Help = lazy(() => import('./features/help/pages/Help'));
+const NotificationCenter = lazy(() => import('./features/notifications/pages/NotificationCenter'));
+const NotificationSettings = lazy(() => import('./features/notifications/pages/NotificationSettings'));
+const AdminBroadcast = lazy(() => import('./features/notifications/pages/AdminBroadcast'));
 
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
@@ -73,78 +77,83 @@ const RouteLoader = () => (
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <Toaster position="top-right" />
-        <ErrorBoundary>
-          <Suspense fallback={<RouteLoader />}>
-            <Routes>
-              {/* Public Marketing Routes */}
-              <Route path="/" element={<PublicLayout />}>
-                <Route index element={<LandingPage />} />
-                <Route path="architecture" element={<Architecture />} />
-                <Route path="features" element={<Placeholder title="Features" />} />
-                <Route path="security" element={<Placeholder title="Security" />} />
-                <Route path="docs" element={<Placeholder title="Documentation" />} />
-                <Route path="api" element={<Placeholder title="API Reference" />} />
-                <Route path="contact" element={<Placeholder title="Contact Support" />} />
-                <Route path="privacy" element={<Placeholder title="Privacy Policy" />} />
-                <Route path="terms" element={<Placeholder title="Terms of Service" />} />
-              </Route>
+      <SocketProvider>
+        <Router>
+          <Toaster position="top-right" />
+          <ErrorBoundary>
+            <Suspense fallback={<RouteLoader />}>
+              <Routes>
+                {/* Public Marketing Routes */}
+                <Route path="/" element={<PublicLayout />}>
+                  <Route index element={<LandingPage />} />
+                  <Route path="architecture" element={<Architecture />} />
+                  <Route path="features" element={<Placeholder title="Features" />} />
+                  <Route path="security" element={<Placeholder title="Security" />} />
+                  <Route path="docs" element={<Placeholder title="Documentation" />} />
+                  <Route path="api" element={<Placeholder title="API Reference" />} />
+                  <Route path="contact" element={<Placeholder title="Contact Support" />} />
+                  <Route path="privacy" element={<Placeholder title="Privacy Policy" />} />
+                  <Route path="terms" element={<Placeholder title="Terms of Service" />} />
+                </Route>
 
-              {/* Auth Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+                {/* Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Root redirects to AppLayout counterparts */}
-              <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
-              <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
-              <Route path="/vendors" element={<Navigate to="/app/vendors" replace />} />
-              <Route path="/purchase-requests" element={<Navigate to="/app/purchase-requests" replace />} />
-              <Route path="/rfqs" element={<Navigate to="/app/rfqs" replace />} />
-              <Route path="/quotations" element={<Navigate to="/app/quotations" replace />} />
-              
-              {/* Protected Dashboard Routes */}
-              <Route path="/app" element={
-                <PrivateRoute>
-                  <AdminLayout />
-                </PrivateRoute>
-              }>
-                <Route index element={<Dashboard />} />
+                {/* Root redirects to AppLayout counterparts */}
+                <Route path="/profile" element={<Navigate to="/app/profile" replace />} />
+                <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+                <Route path="/vendors" element={<Navigate to="/app/vendors" replace />} />
+                <Route path="/purchase-requests" element={<Navigate to="/app/purchase-requests" replace />} />
+                <Route path="/rfqs" element={<Navigate to="/app/rfqs" replace />} />
+                <Route path="/quotations" element={<Navigate to="/app/quotations" replace />} />
                 
-                <Route path="vendors" element={<VendorList />} />
-                <Route path="vendors/new" element={<CreateVendor />} />
-                <Route path="vendors/:id" element={<VendorDetails />} />
-                <Route path="vendors/:id/edit" element={<EditVendor />} />
-                
-                <Route path="purchase-requests" element={<PurchaseRequestList />} />
-                <Route path="purchase-requests/new" element={<CreatePurchaseRequest />} />
-                <Route path="purchase-requests/approval" element={<ManagerApprovalQueue />} />
-                <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
-                <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
-                
-                <Route path="rfqs" element={<RFQList />} />
-                <Route path="rfqs/new" element={<CreateRFQ />} />
-                <Route path="rfqs/:id" element={<RFQDetails />} />
-                <Route path="rfqs/:id/edit" element={<EditRFQ />} />
-                <Route path="rfqs/:id/compare" element={<QuoteComparison />} />
-                
-                <Route path="profile" element={<Profile />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="help" element={<Help />} />
-                
-                <Route path="purchase-orders" element={<Navigate to="/app/purchase-requests" replace />} />
-                <Route path="quotations" element={<QuotationList />} />
-              </Route>
+                {/* Protected Dashboard Routes */}
+                <Route path="/app" element={
+                  <PrivateRoute>
+                    <AdminLayout />
+                  </PrivateRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  
+                  <Route path="vendors" element={<VendorList />} />
+                  <Route path="vendors/new" element={<CreateVendor />} />
+                  <Route path="vendors/:id" element={<VendorDetails />} />
+                  <Route path="vendors/:id/edit" element={<EditVendor />} />
+                  
+                  <Route path="purchase-requests" element={<PurchaseRequestList />} />
+                  <Route path="purchase-requests/new" element={<CreatePurchaseRequest />} />
+                  <Route path="purchase-requests/approval" element={<ManagerApprovalQueue />} />
+                  <Route path="purchase-requests/:id" element={<PurchaseRequestDetails />} />
+                  <Route path="purchase-requests/:id/edit" element={<EditPurchaseRequest />} />
+                  
+                  <Route path="rfqs" element={<RFQList />} />
+                  <Route path="rfqs/new" element={<CreateRFQ />} />
+                  <Route path="rfqs/:id" element={<RFQDetails />} />
+                  <Route path="rfqs/:id/edit" element={<EditRFQ />} />
+                  <Route path="rfqs/:id/compare" element={<QuoteComparison />} />
+                  
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="help" element={<Help />} />
+                  <Route path="notifications" element={<NotificationCenter />} />
+                  <Route path="notifications/settings" element={<NotificationSettings />} />
+                  <Route path="notifications/broadcasts" element={<AdminBroadcast />} />
+                  
+                  <Route path="purchase-orders" element={<Navigate to="/app/purchase-requests" replace />} />
+                  <Route path="quotations" element={<QuotationList />} />
+                </Route>
 
-              {/* Error Pages */}
-              <Route path="/403" element={<Forbidden />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </ErrorBoundary>
-      </Router>
+                {/* Error Pages */}
+                <Route path="/403" element={<Forbidden />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </Router>
+      </SocketProvider>
     </ThemeProvider>
   );
 }
