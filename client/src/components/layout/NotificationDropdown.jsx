@@ -126,7 +126,7 @@ const NotificationDropdown = () => {
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (err) {
-      toast.error("Failed to mark all as read");
+      toast.error('Failed to mark all as read');
     }
   };
 

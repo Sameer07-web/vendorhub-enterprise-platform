@@ -48,6 +48,9 @@ const NotificationCenter = lazy(() => import('./features/notifications/pages/Not
 const NotificationSettings = lazy(() => import('./features/notifications/pages/NotificationSettings'));
 const AdminBroadcast = lazy(() => import('./features/notifications/pages/AdminBroadcast'));
 
+const Reports = lazy(() => import('./features/reports/pages/Reports'));
+const QueueMonitoring = lazy(() => import('./features/admin/pages/QueueMonitoring'));
+
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
   <div className="flex items-center justify-center h-64 border-2 border-dashed border-surface-200 rounded-lg bg-white">
@@ -138,9 +141,15 @@ function App() {
                   <Route path="profile" element={<Profile />} />
                   <Route path="settings" element={<Settings />} />
                   <Route path="help" element={<Help />} />
+                  
+                  {/* Admin Routes */}
+                  <Route path="admin/queues" element={<QueueMonitoring />} />
+
                   <Route path="notifications" element={<NotificationCenter />} />
                   <Route path="notifications/settings" element={<NotificationSettings />} />
                   <Route path="notifications/broadcasts" element={<AdminBroadcast />} />
+                  
+                  <Route path="reports" element={<Reports />} />
                   
                   <Route path="purchase-orders" element={<Navigate to="/app/purchase-requests" replace />} />
                   <Route path="quotations" element={<QuotationList />} />

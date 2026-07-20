@@ -17,7 +17,11 @@ const searchRoutes = require("./routes/search.routes");
 const userRoutes = require("./routes/user.routes");
 const healthRoutes = require("./routes/health.routes");
 const notificationRoutes = require("./routes/notification.routes");
-
+const analyticsRoutes = require("./routes/analytics.routes");
+const reportRoutes = require("./routes/report.routes");
+const savedReportRoutes = require("./routes/savedReport.routes");
+const dashboardPreferenceRoutes = require("./routes/dashboardPreference.routes");
+const queueRoutes = require("./routes/queue.routes");
 const app = express();
 
 // ── Observability & Logging ──────────────────────────────────────────
@@ -64,6 +68,11 @@ app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/reports", reportRoutes);
+app.use("/api/v1/saved-reports", savedReportRoutes);
+app.use("/api/v1/dashboard/preferences", dashboardPreferenceRoutes);
+app.use("/api/v1/queues", queueRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────
 app.use("/health", healthRoutes);

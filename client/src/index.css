@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* React Grid Layout */
+@import "react-grid-layout/css/styles.css";
+@import "react-resizable/css/styles.css";
+
 @theme {
   /* High-end Enterprise Palette (Brand/Primary) */
   --color-primary-50: var(--primary-50);

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "worker": "node src/worker.js",
     "test": "jest --detectOpenHandles"
   },
   "keywords": [],
@@ -14,16 +15,22 @@
   "type": "commonjs",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.80.9",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.3.0",
+    "ioredis": "^5.11.1",
     "joi": "^18.2.3",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "morgan": "^1.11.0",
+    "node-cache": "^5.1.2",
     "nodemailer": "^9.0.3",
+    "pdfkit": "^0.19.1",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
