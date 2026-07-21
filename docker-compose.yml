@@ -40,6 +40,31 @@ services:
       retries: 3
     restart: unless-stopped
 
+  redis:
+    image: redis:7.0-alpine
+    container_name: vendorhub-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: vendorhub-worker
+    command: npm run worker
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongodb:27017/vendorhub
+      - REDIS_URL=redis://redis:6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./client

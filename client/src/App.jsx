@@ -50,6 +50,7 @@ const AdminBroadcast = lazy(() => import('./features/notifications/pages/AdminBr
 
 const Reports = lazy(() => import('./features/reports/pages/Reports'));
 const QueueMonitoring = lazy(() => import('./features/admin/pages/QueueMonitoring'));
+const SLAIntelligence = lazy(() => import('./features/admin/pages/SLAIntelligence'));
 
 // Placeholder component for other routes
 const Placeholder = ({ title }) => (
@@ -144,6 +145,7 @@ function App() {
                   
                   {/* Admin Routes */}
                   <Route path="admin/queues" element={<QueueMonitoring />} />
+                  <Route path="admin/sla" element={<SLAIntelligence />} />
 
                   <Route path="notifications" element={<NotificationCenter />} />
                   <Route path="notifications/settings" element={<NotificationSettings />} />

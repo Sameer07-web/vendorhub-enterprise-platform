@@ -22,6 +22,12 @@ const reportRoutes = require("./routes/report.routes");
 const savedReportRoutes = require("./routes/savedReport.routes");
 const dashboardPreferenceRoutes = require("./routes/dashboardPreference.routes");
 const queueRoutes = require("./routes/queue.routes");
+const workflowRoutes = require("./routes/workflow.routes");
+const automationRoutes = require("./routes/automation.routes");
+const workflowRuleRoutes = require("./routes/workflowRule.routes");
+const aiRoutes = require("./routes/ai.routes");
+const insightRoutes = require("./routes/insight.routes");
+const documentRoutes = require("./routes/document.routes");
 const app = express();
 
 // ── Observability & Logging ──────────────────────────────────────────
@@ -73,6 +79,12 @@ app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/saved-reports", savedReportRoutes);
 app.use("/api/v1/dashboard/preferences", dashboardPreferenceRoutes);
 app.use("/api/v1/queues", queueRoutes);
+app.use("/api/v1/workflows", workflowRoutes);
+app.use("/api/v1/automation", automationRoutes);
+app.use("/api/v1/workflow-rules", workflowRuleRoutes);
+app.use("/api/v1/ai", aiRoutes);
+app.use("/api/v1/ai/insights", insightRoutes);
+app.use("/api/v1/ai/extract", documentRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────
 app.use("/health", healthRoutes);

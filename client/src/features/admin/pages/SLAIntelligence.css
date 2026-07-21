@@ -1,0 +1,180 @@
+.sla-dashboard {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background-color: var(--surface-bg);
+  min-height: 100vh;
+}
+
+.sla-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sla-header h1 {
+  font-size: 24px;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.sla-header select {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.sla-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.kpi-card.highlight {
+  border-left: 4px solid var(--primary-color, #0f172a);
+}
+
+.kpi-card h3 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.text-danger { color: #dc2626; }
+.text-success { color: #16a34a; }
+.text-warning { color: #d97706; }
+
+.sla-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.sla-card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.sla-card h2 {
+  font-size: 18px;
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.funnel-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.funnel-step {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface-bg-hover, #f8fafc);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary-color, #0f172a);
+}
+
+.funnel-step .label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.funnel-step .value {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.sla-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sla-table th, .sla-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.sla-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.sla-table td {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  flex: 1;
+  background-color: var(--border-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: inherit;
+  background-color: inherit;
+}
+
+.bg-success { background-color: #16a34a; }
+.bg-danger { background-color: #dc2626; }
+.bg-warning { background-color: #d97706; }
+
+.sla-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
+  color: var(--text-secondary);
+}

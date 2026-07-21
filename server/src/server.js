@@ -2,6 +2,7 @@ require("dotenv").config();
 const connectDB = require("./config/database");
 const app = require("./app");
 const { initializeSocket } = require("./socket/socketServer");
+const initSystemUser = require("./utils/initSystemUser");
 
 const requiredEnvVars = ["PORT", "MONGO_URI", "JWT_SECRET", "JWT_EXPIRES_IN"];
 requiredEnvVars.forEach((envVar) => {
@@ -23,7 +24,9 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-connectDB();
+connectDB().then(() => {
+  initSystemUser();
+}).catch(err => console.error(err));
 const PORT = process.env.PORT;
 
 const server = app.listen(PORT, () => {

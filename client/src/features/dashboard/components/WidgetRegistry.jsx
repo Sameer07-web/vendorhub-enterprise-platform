@@ -1,13 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, Users, FileText, Activity, Clock, Trophy, Building2 } from 'lucide-react';
+import { DollarSign, Users, FileText, Activity, Clock, Trophy, Building2, AlertTriangle, Zap, TrendingUp, Sparkles } from 'lucide-react';
 import StatCard from './StatCard';
 import ChartCard from './ChartCard';
 import SpendAnalyticsChart from './SpendAnalyticsChart';
 import VendorDistributionChart from './VendorDistributionChart';
 import DepartmentSpendChart from './DepartmentSpendChart';
 import ProcurementStatusChart from './ProcurementStatusChart';
+import AIInsightsWidget from './widgets/AIInsightsWidget';
 import { formatCurrency } from '../../../utils/formatCurrency';
 
 // Helper for Drill-down navigation
@@ -215,6 +216,48 @@ const ProcurementStatusWidget = ({ data }) => {
   );
 };
 
+const OverdueApprovalsWidget = ({ data }) => {
+  const count = data?.overdueCount || 0;
+  return (
+    <StatCard 
+      title="Overdue Approvals"
+      value={count}
+      icon={AlertTriangle}
+      label="Requires attention"
+      colorClass="bg-danger-500 text-danger-500"
+    />
+  );
+};
+
+const AutomationSuccessWidget = ({ data }) => {
+  const automation = data?.automation;
+  if (!automation) return null;
+  return (
+    <StatCard 
+      title="Automation Success"
+      value={`${automation.successRate}%`}
+      icon={Zap}
+      label={`${automation.successCount} executions`}
+      colorClass="bg-primary-500 text-primary-500"
+    />
+  );
+};
+
+const EscalationRateWidget = ({ data }) => {
+  const slaHealth = data?.slaHealth;
+  if (!slaHealth) return null;
+  const rate = slaHealth.totalProcesses > 0 ? ((slaHealth.escalatedProcesses / slaHealth.totalProcesses) * 100).toFixed(1) : 0;
+  return (
+    <StatCard 
+      title="Escalation Rate"
+      value={`${rate}%`}
+      icon={TrendingUp}
+      label={`${slaHealth.escalatedProcesses} escalations`}
+      colorClass="bg-warning-500 text-warning-500"
+    />
+  );
+};
+
 
 export const WidgetRegistry = {
   totalSpend: {
@@ -279,5 +322,33 @@ export const WidgetRegistry = {
     component: ProcurementStatusWidget,
     minW: 4, minH: 8,
     defaultW: 6, defaultH: 10
+  },
+  overdueApprovals: {
+    id: 'overdueApprovals',
+    title: 'Overdue Approvals',
+    component: OverdueApprovalsWidget,
+    minW: 2, minH: 3,
+    defaultW: 3, defaultH: 4
+  },
+  automationSuccess: {
+    id: 'automationSuccess',
+    title: 'Automation Success Rate',
+    component: AutomationSuccessWidget,
+    minW: 2, minH: 3,
+    defaultW: 3, defaultH: 4
+  },
+  escalationRate: {
+    id: 'escalationRate',
+    title: 'Escalation Rate',
+    component: EscalationRateWidget,
+    minW: 2, minH: 3,
+    defaultW: 3, defaultH: 4
+  },
+  aiInsights: {
+    id: 'aiInsights',
+    title: 'AI Operations Intelligence',
+    component: AIInsightsWidget,
+    minW: 4, minH: 6,
+    defaultW: 12, defaultH: 8
   }
 };

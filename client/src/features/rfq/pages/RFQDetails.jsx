@@ -12,6 +12,7 @@ import Button from '../../../components/common/Button';
 import PageHeader from '../../../components/common/PageHeader';
 import DetailCard from '../../../components/common/DetailCard';
 import ConfirmDialog from '../../../components/common/ConfirmDialog';
+import SubmitQuoteModal from '../components/SubmitQuoteModal';
 import { formatDate } from '../../../utils/formatDate';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { canEditRFQ, canSendRFQ, canCloseRFQ, canCancelRFQ } from '../../../utils/permissions';
@@ -30,6 +31,7 @@ const RFQDetails = () => {
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [isSubmitQuoteOpen, setIsSubmitQuoteOpen] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     try {
@@ -193,6 +195,14 @@ const RFQDetails = () => {
               <Button variant="secondary" onClick={handleSimulateResponses} isLoading={isProcessing}>
                 Simulate Responses
               </Button>
+            )}
+            {['Published', 'SENT', 'PARTIALLY_RESPONDED'].includes(rfq.status) && (
+                <button
+                  onClick={() => setIsSubmitQuoteOpen(true)}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-primary-600 rounded-lg shadow-sm text-sm font-medium text-primary-600 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 whitespace-nowrap shrink-0 transition-colors"
+                >
+                  Add Quotation
+                </button>
             )}
             {quotes.length > 0 && ['Published', 'SENT', 'PARTIALLY_RESPONDED', 'CLOSED'].includes(rfq.status) && (
               <Button variant="primary" onClick={() => navigate(`/app/rfqs/${rfq._id}/compare`)}>
@@ -369,6 +379,12 @@ const RFQDetails = () => {
         confirmText="Cancel RFQ"
         variant="danger"
         isLoading={isProcessing}
+      />
+      <SubmitQuoteModal 
+        isOpen={isSubmitQuoteOpen} 
+        onClose={() => setIsSubmitQuoteOpen(false)} 
+        rfq={rfq} 
+        onQuoteSubmitted={fetchDetails} 
       />
     </div>
   );

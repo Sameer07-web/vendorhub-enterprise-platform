@@ -9,6 +9,10 @@ vi.mock('../../../api/auth.api', () => ({
   login: vi.fn()
 }));
 
+vi.mock('../../src/contexts/SocketContext', () => ({
+  useSocket: () => ({ socket: { on: vi.fn(), off: vi.fn() }, isConnected: true })
+}));
+
 // We only want to test that AdminLayout renders an Outlet context frame
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');

@@ -29,3 +29,28 @@ export const getProcurementAnalytics = async (range = '30d') => {
   const response = await api.get('/analytics/procurement', { params: { range } });
   return response.data;
 };
+
+export const getWorkflowSlaHealth = async (range = '30d') => {
+  const response = await api.get('/analytics/workflows/health', { params: { range } });
+  return response.data;
+};
+
+export const getWorkflowDepartmentScorecard = async (range = '30d') => {
+  const response = await api.get('/analytics/workflows/departments', { params: { range } });
+  return response.data;
+};
+
+export const getWorkflowFunnel = async (range = '30d') => {
+  const response = await api.get('/analytics/workflows/funnel', { params: { range } });
+  return response.data;
+};
+
+export const getAutomationMetrics = async (range = '30d') => {
+  const response = await api.get('/analytics/automation/metrics', { params: { range } });
+  return response.data;
+};
+
+export const getOverdueApprovals = async () => {
+  const response = await api.get('/analytics/workflows/overdue');
+  return response.data;
+};

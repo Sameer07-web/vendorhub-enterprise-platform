@@ -13,20 +13,21 @@ class DashboardPreferenceService {
         theme: 'light',
         defaultRange: '30d',
         widgets: [
-          'totalSpend', 'vendors', 'purchaseRequests', 'totalRfqs',
+          'aiInsights', 'totalSpend', 'vendors', 'purchaseRequests', 'totalRfqs',
           'executiveSummary', 'spendTrend', 'departmentSpend', 'vendorDistribution', 'procurementStatus'
         ],
         layouts: {
           lg: [
-            { i: 'totalSpend', x: 0, y: 0, w: 3, h: 4 },
-            { i: 'vendors', x: 3, y: 0, w: 3, h: 4 },
-            { i: 'purchaseRequests', x: 6, y: 0, w: 3, h: 4 },
-            { i: 'totalRfqs', x: 9, y: 0, w: 3, h: 4 },
-            { i: 'executiveSummary', x: 0, y: 4, w: 12, h: 4 },
-            { i: 'spendTrend', x: 0, y: 8, w: 6, h: 10 },
-            { i: 'departmentSpend', x: 6, y: 8, w: 6, h: 10 },
-            { i: 'vendorDistribution', x: 0, y: 18, w: 6, h: 10 },
-            { i: 'procurementStatus', x: 6, y: 18, w: 6, h: 10 }
+            { i: 'aiInsights', x: 0, y: 0, w: 12, h: 8 },
+            { i: 'totalSpend', x: 0, y: 8, w: 3, h: 4 },
+            { i: 'vendors', x: 3, y: 8, w: 3, h: 4 },
+            { i: 'purchaseRequests', x: 6, y: 8, w: 3, h: 4 },
+            { i: 'totalRfqs', x: 9, y: 8, w: 3, h: 4 },
+            { i: 'executiveSummary', x: 0, y: 12, w: 12, h: 4 },
+            { i: 'spendTrend', x: 0, y: 16, w: 6, h: 10 },
+            { i: 'departmentSpend', x: 6, y: 16, w: 6, h: 10 },
+            { i: 'vendorDistribution', x: 0, y: 26, w: 6, h: 10 },
+            { i: 'procurementStatus', x: 6, y: 26, w: 6, h: 10 }
           ]
         }
       });
