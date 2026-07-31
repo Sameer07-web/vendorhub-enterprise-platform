@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const aiInsightSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   title: {
     type: String,
     required: true,
@@ -73,10 +79,13 @@ const aiInsightSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: false
+  optimisticConcurrency: true
 });
 
 // Index to quickly find active insights and prevent duplicates
+aiInsightSchema.index({ organization: 1, status: 1, type: 1, affectedModule: 1 });
+aiInsightSchema.index({ organization: 1, severity: 1 });
+aiInsightSchema.index({ organization: 1, createdAt: -1 });
 aiInsightSchema.index({ status: 1, type: 1, affectedModule: 1 });
 aiInsightSchema.index({ generatedAt: -1 });
 

@@ -10,6 +10,12 @@ const toolCallSchema = new mongoose.Schema({
 }, { _id: false });
 
 const aiConversationSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -46,10 +52,12 @@ const aiConversationSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: false
+  optimisticConcurrency: true
 });
 
 // Index for auditing and analytics
+aiConversationSchema.index({ organization: 1, createdAt: -1 });
+aiConversationSchema.index({ organization: 1, user: 1 });
 aiConversationSchema.index({ user: 1, createdAt: -1 });
 
 const AIConversation = mongoose.model('AIConversation', aiConversationSchema);

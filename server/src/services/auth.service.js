@@ -5,10 +5,18 @@ const User = require("../models/User");
 const ApiError = require("../utils/ApiError");
 const notificationService = require("./notification.service");
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+const generateToken = (user) => {
+  return jwt.sign(
+    { 
+      id: user._id, 
+      organizationId: user.organization,
+      tenantVersion: user.tenantVersion || 1
+    }, 
+    process.env.JWT_SECRET, 
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    }
+  );
 };
 
 /**
@@ -37,7 +45,7 @@ const registerUser = async (userData) => {
   });
 
   // Generate JWT so user is logged in immediately after registration
-  const token = generateToken(user._id);
+  const token = generateToken(user);
 
   const userResponse = user.toObject();
   delete userResponse.password;
@@ -83,7 +91,7 @@ const loginUser = async (loginData) => {
   }
 
   // Generate JWT token
-  const token = generateToken(user._id);
+  const token = generateToken(user);
 
   const userResponse = user.toObject();
   delete userResponse.password;

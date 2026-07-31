@@ -2,7 +2,7 @@ const savedReportService = require('../services/savedReport.service');
 
 const getSavedReports = async (req, res) => {
   try {
-    const reports = await savedReportService.getSavedReports(req.user._id);
+    const reports = await savedReportService.getSavedReports(req.organization._id, req.user._id);
     res.json({ success: true, data: reports });
   } catch (error) {
     console.error('Error fetching saved reports:', error);
@@ -12,7 +12,7 @@ const getSavedReports = async (req, res) => {
 
 const getRecentActivity = async (req, res) => {
   try {
-    const recent = await savedReportService.getRecentReportsAndJobs(req.user._id);
+    const recent = await savedReportService.getRecentReportsAndJobs(req.organization._id, req.user._id);
     res.json({ success: true, data: recent });
   } catch (error) {
     console.error('Error fetching recent activity:', error);
@@ -22,7 +22,7 @@ const getRecentActivity = async (req, res) => {
 
 const createSavedReport = async (req, res) => {
   try {
-    const report = await savedReportService.createSavedReport(req.user._id, req.body);
+    const report = await savedReportService.createSavedReport(req.organization._id, req.user._id, req.body);
     res.status(201).json({ success: true, data: report });
   } catch (error) {
     console.error('Error creating saved report:', error);
@@ -32,7 +32,7 @@ const createSavedReport = async (req, res) => {
 
 const updateSavedReport = async (req, res) => {
   try {
-    const report = await savedReportService.updateSavedReport(req.user._id, req.params.id, req.body);
+    const report = await savedReportService.updateSavedReport(req.organization._id, req.user._id, req.params.id, req.body);
     if (!report) return res.status(404).json({ success: false, error: 'Report not found' });
     res.json({ success: true, data: report });
   } catch (error) {
@@ -43,7 +43,7 @@ const updateSavedReport = async (req, res) => {
 
 const deleteSavedReport = async (req, res) => {
   try {
-    const report = await savedReportService.deleteSavedReport(req.user._id, req.params.id);
+    const report = await savedReportService.deleteSavedReport(req.organization._id, req.user._id, req.params.id);
     if (!report) return res.status(404).json({ success: false, error: 'Report not found' });
     res.json({ success: true, data: {} });
   } catch (error) {
@@ -54,7 +54,7 @@ const deleteSavedReport = async (req, res) => {
 
 const markReportAsRun = async (req, res) => {
   try {
-    const report = await savedReportService.markAsRun(req.user._id, req.params.id);
+    const report = await savedReportService.markAsRun(req.organization._id, req.user._id, req.params.id);
     if (!report) return res.status(404).json({ success: false, error: 'Report not found' });
     res.json({ success: true, data: report });
   } catch (error) {

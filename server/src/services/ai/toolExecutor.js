@@ -1,67 +1,65 @@
-const ApprovalProcess = require('../../models/ApprovalProcess');
-const PurchaseRequest = require('../../models/PurchaseRequest');
-const RFQ = require('../../models/RFQ');
-const Vendor = require('../../models/Vendor');
-const Notification = require('../../models/Notification');
-const AIDraft = require('../../models/AIDraft');
+const ApprovalProcessRepository = require('../../repositories/ApprovalProcessRepository');
+const PurchaseRequestRepository = require('../../repositories/PurchaseRequestRepository');
+const RFQRepository = require('../../repositories/RFQRepository');
+const VendorRepository = require('../../repositories/VendorRepository');
+const NotificationRepository = require('../../repositories/NotificationRepository');
+const AIDraftRepository = require('../../repositories/AIDraftRepository');
 const analyticsService = require('../analytics.service');
 
 class ToolExecutor {
   /**
    * Executes a tool if the user is authorized.
-   * @param {string} toolName 
-   * @param {Object} args 
-   * @param {Object} user 
-   * @param {Object} rbacDef 
-   * @returns {Object} JSON result of the tool
    */
-  async execute(toolName, args, user, rbacDef) {
-    // 1. RBAC Check
+  async execute(toolName, args, user, rbacDef, sessionOrOrgId) {
     if (!rbacDef.roles.includes(user.role)) {
       throw new Error(`Unauthorized: User role ${user.role} is not permitted to use tool ${toolName}`);
     }
 
-    // 2. Dispatch
+    const orgId = sessionOrOrgId
+      ? sessionOrOrgId.organization
+        ? sessionOrOrgId.organization
+        : sessionOrOrgId._id
+        ? sessionOrOrgId._id
+        : sessionOrOrgId
+      : user.organization;
+
     switch (toolName) {
       case 'getPendingApprovals':
-        return await this.getPendingApprovals(args, user);
+        return await this.getPendingApprovals(orgId, args, user);
       case 'getOverdueApprovals':
-        return await this.getOverdueApprovals(args, user);
+        return await this.getOverdueApprovals(orgId, args, user);
       case 'getPendingRFQs':
-        return await this.getPendingRFQs(args, user);
+        return await this.getPendingRFQs(orgId, args, user);
       case 'getDashboardKPIs':
-        return await this.getDashboardKPIs(args, user);
+        return await this.getDashboardKPIs(orgId, args, user);
       case 'getPurchaseRequestSummary':
-        return await this.getPurchaseRequestSummary(args, user);
+        return await this.getPurchaseRequestSummary(orgId, args, user);
       case 'getVendorSummary':
-        return await this.getVendorSummary(args, user);
+        return await this.getVendorSummary(orgId, args, user);
       case 'searchNotifications':
-        return await this.searchNotifications(args, user);
+        return await this.searchNotifications(orgId, args, user);
       case 'draftPurchaseRequest':
-        return await this.draftPurchaseRequest(args, user);
+        return await this.draftPurchaseRequest(orgId, args, user);
       case 'draftRFQ':
-        return await this.draftRFQ(args, user);
+        return await this.draftRFQ(orgId, args, user);
       case 'explainApprovalPath':
-        return await this.explainApprovalPath(args, user);
+        return await this.explainApprovalPath(orgId, args, user);
       case 'recommendAction':
-        return await this.recommendAction(args, user);
-      // Fallback
+        return await this.recommendAction(orgId, args, user);
       default:
         throw new Error(`Tool ${toolName} is registered but not implemented in ToolExecutor.`);
     }
   }
 
-  // --- Tool Implementations ---
-
-  async getPendingApprovals(args, user) {
+  async getPendingApprovals(orgId, args, user) {
     const query = { status: 'PENDING' };
     if (user.role === 'Employee') {
       query.pendingApprovers = user._id;
     }
-    const approvals = await ApprovalProcess.find(query)
-      .populate('entityId', 'title requestNumber department')
-      .lean()
-      .limit(20);
+    const approvals = await ApprovalProcessRepository.findMany(orgId, query, null, {
+      limit: 20,
+      populate: [{ path: 'entityId', select: 'title requestNumber department' }]
+    });
     
     if (args.department) {
       return approvals.filter(a => a.entityId && a.entityId.department === args.department);
@@ -69,58 +67,39 @@ class ToolExecutor {
     return approvals;
   }
 
-  async getOverdueApprovals(args, user) {
-    const approvals = await ApprovalProcess.find({ status: 'PENDING' })
-      .populate('entityId', 'title requestNumber')
-      .lean();
+  async getOverdueApprovals(orgId, args, user) {
+    const approvals = await ApprovalProcessRepository.findMany(orgId, { status: 'PENDING' }, null, {
+      populate: [{ path: 'entityId', select: 'title requestNumber' }]
+    });
       
     const overdue = approvals.filter(a => {
-      const hasBreach = a.history && a.history.some(h => h.action === 'SLA_BREACHED');
-      return hasBreach;
+      return a.history && a.history.some(h => h.action === 'SLA_BREACHED');
     });
     return overdue.slice(0, 20);
   }
 
-  async getPendingRFQs(args, user) {
-    return await RFQ.find({ status: { $in: ['DRAFT', 'SENT', 'PARTIALLY_RESPONDED'] }, isDeleted: false })
-      .select('rfqNumber title status quotationDeadline quotationCount')
-      .lean()
-      .limit(20);
+  async getPendingRFQs(orgId, args, user) {
+    return await RFQRepository.findMany(orgId, { status: { $in: ['DRAFT', 'SENT', 'PARTIALLY_RESPONDED'] }, isDeleted: false }, 'rfqNumber title status quotationDeadline quotationCount', { limit: 20 });
   }
 
-  async getDashboardKPIs(args, user) {
-    const kpis = await analyticsService.getDashboardKPIs();
-    return kpis;
+  async getDashboardKPIs(orgId, args, user) {
+    return await analyticsService.getDashboardKPIs(orgId);
   }
 
-  async getPurchaseRequestSummary(args, user) {
-    const prs = await PurchaseRequest.find({ status: 'PENDING_APPROVAL', isDeleted: false })
-      .select('requestNumber title department estimatedCost priority')
-      .lean()
-      .limit(10);
-    return prs;
+  async getPurchaseRequestSummary(orgId, args, user) {
+    return await PurchaseRequestRepository.findMany(orgId, { status: 'PENDING_APPROVAL', isDeleted: false }, 'requestNumber title department estimatedCost priority', { limit: 10 });
   }
 
-  async getVendorSummary(args, user) {
-    const vendors = await Vendor.find({ status: 'ACTIVE', isDeleted: false })
-      .select('name category rating complianceStatus')
-      .lean()
-      .limit(10);
-    return vendors;
+  async getVendorSummary(orgId, args, user) {
+    return await VendorRepository.findMany(orgId, { status: 'Active', isDeleted: false }, 'companyName vendorCode category rating complianceStatus', { limit: 10 });
   }
 
-  async searchNotifications(args, user) {
-    return await Notification.find({ user: user._id, isRead: false })
-      .select('title message type createdAt')
-      .sort({ createdAt: -1 })
-      .lean()
-      .limit(10);
+  async searchNotifications(orgId, args, user) {
+    return await NotificationRepository.findMany(orgId, { recipient: user._id, isRead: false }, 'title message type createdAt', { sort: { createdAt: -1 }, limit: 10 });
   }
 
-  // --- Phase 9.4 Workflow Tools ---
-
-  async draftPurchaseRequest(args, user) {
-    const draft = await AIDraft.create({
+  async draftPurchaseRequest(orgId, args, user) {
+    const draft = await AIDraftRepository.create(orgId, {
       user: user._id,
       entityType: 'PurchaseRequest',
       draftJson: {
@@ -138,8 +117,8 @@ class ToolExecutor {
     };
   }
 
-  async draftRFQ(args, user) {
-    const draft = await AIDraft.create({
+  async draftRFQ(orgId, args, user) {
+    const draft = await AIDraftRepository.create(orgId, {
       user: user._id,
       entityType: 'RFQ',
       draftJson: {
@@ -157,52 +136,46 @@ class ToolExecutor {
     };
   }
 
-  async explainApprovalPath(args, user) {
-    // Find the approval process for the given entityId
-    // entityId might be a PR number like 'PR-1002' or an ObjectId. We check both.
-    let pr = await PurchaseRequest.findOne({ requestNumber: args.entityId });
-    if (!pr && args.entityId.length === 24) {
-       pr = await PurchaseRequest.findById(args.entityId);
+  async explainApprovalPath(orgId, args, user) {
+    let pr = await PurchaseRequestRepository.findOne(orgId, { requestNumber: args.entityId });
+    if (!pr && args.entityId && args.entityId.length === 24) {
+      pr = await PurchaseRequestRepository.findById(orgId, args.entityId);
     }
     
     if (!pr) {
       return { error: `Could not find entity with ID: ${args.entityId}` };
     }
 
-    const process = await ApprovalProcess.findOne({ entityId: pr._id })
-      .populate('pendingApprovers', 'fullName email')
-      .populate('history.actor', 'fullName')
-      .lean();
+    const process = await ApprovalProcessRepository.findOne(orgId, { entityId: pr._id }, null, {
+      populate: [
+        { path: 'pendingApprovers', select: 'fullName email' },
+        { path: 'history.actorId', select: 'fullName' }
+      ]
+    });
 
     if (!process) {
       return { status: 'No active approval process found for this entity.' };
     }
 
-    // Structure a clean summary for the LLM
-    const summary = {
+    return {
       entity: pr.requestNumber,
       title: pr.title,
       currentStatus: process.status,
       currentSequenceLevel: process.currentSequence,
       slaDeadline: process.slaDeadline,
       isOverdue: process.slaDeadline ? new Date() > new Date(process.slaDeadline) : false,
-      pendingWith: process.pendingApprovers.map(a => a.fullName),
-      recentHistory: process.history.slice(-3).map(h => ({
+      pendingWith: (process.pendingApprovers || []).map(a => a.fullName || a.email),
+      recentHistory: (process.history || []).slice(-3).map(h => ({
         action: h.action,
-        actor: h.actor ? h.actor.fullName : 'System',
-        date: h.createdAt,
+        actor: h.actorId ? h.actorId.fullName : 'System',
+        date: h.actionDate || h.createdAt,
         comments: h.comments
       }))
     };
-
-    return summary;
   }
 
-  async recommendAction(args, user) {
-    // Dummy recommendation logic based on context
+  async recommendAction(orgId, args, user) {
     const recommendations = [];
-    
-    // Always provide at least one generic recommendation based on standard playbook
     if (args.context && args.context.toLowerCase().includes('overdue')) {
       recommendations.push({
         action: 'SEND_REMINDER',

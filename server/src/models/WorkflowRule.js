@@ -32,10 +32,15 @@ const workflowLevelSchema = new mongoose.Schema({
 }, { _id: false });
 
 const workflowRuleSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   name: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   entityType: {
@@ -90,8 +95,12 @@ const workflowRuleSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: false
+  optimisticConcurrency: true
 });
+
+workflowRuleSchema.index({ organization: 1, entityType: 1 });
+workflowRuleSchema.index({ organization: 1, name: 1 }, { unique: true });
+workflowRuleSchema.index({ organization: 1, isActive: 1 });
 
 const WorkflowRule = mongoose.model('WorkflowRule', workflowRuleSchema);
 

@@ -2,10 +2,22 @@ const mongoose = require("mongoose");
 
 const auditLogSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    correlationId: {
+      type: String,
+    },
+    requestId: {
+      type: String,
     },
     action: {
       type: String, // e.g., 'CREATE_VENDOR', 'UPDATE_VENDOR', 'DELETE_VENDOR', 'APPROVE_PR', 'REJECT_PR', 'AWARD_RFQ'
@@ -40,6 +52,9 @@ const auditLogSchema = new mongoose.Schema(
 );
 
 // Indexes for performance optimization
+auditLogSchema.index({ organization: 1, createdAt: -1 });
+auditLogSchema.index({ organization: 1, user: 1 });
+auditLogSchema.index({ organization: 1, action: 1 });
 auditLogSchema.index({ createdAt: -1 });
 auditLogSchema.index({ entityType: 1, entityId: 1 });
 auditLogSchema.index({ user: 1 });

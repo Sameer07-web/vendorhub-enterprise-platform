@@ -1,12 +1,13 @@
-const RFQ = require("../models/RFQ");
-const PurchaseRequest = require("../models/PurchaseRequest");
-const Vendor = require("../models/Vendor");
+const RFQRepository = require("../repositories/RFQRepository");
+const PurchaseRequestRepository = require("../repositories/PurchaseRequestRepository");
+const VendorRepository = require("../repositories/VendorRepository");
 const Counter = require("../models/Counter");
 const ApiError = require("../utils/ApiError");
 const escapeRegex = require("../utils/escapeRegex");
 const { logEvent } = require("./audit.service");
 const notificationService = require("./notification.service");
 const User = require("../models/User");
+const TenantReferenceValidator = require("../utils/TenantReferenceValidator");
 
 /**
  * Generate Next RFQ Code
@@ -23,17 +24,14 @@ const generateRFQCode = async () => {
 /**
  * Validate Purchase Request for RFQ creation
  */
-const validatePurchaseRequest = async (prId, ignoreDuplicateCheck = false) => {
-  const pr = await PurchaseRequest.findOne({ _id: prId, isDeleted: false });
-  if (!pr) {
-    throw new ApiError(404, "Purchase Request not found");
-  }
+const validatePurchaseRequest = async (organizationId, prId, ignoreDuplicateCheck = false) => {
+  const pr = await TenantReferenceValidator.validatePurchaseRequest(organizationId, prId);
   if (pr.status !== "APPROVED") {
     throw new ApiError(400, "Purchase Request must be in APPROVED status to generate an RFQ");
   }
 
   if (!ignoreDuplicateCheck) {
-    const activeRFQ = await RFQ.findOne({
+    const activeRFQ = await RFQRepository.findOne(organizationId, {
       purchaseRequest: prId,
       status: { $in: ["DRAFT", "SENT", "PARTIALLY_RESPONDED"] },
       isDeleted: false,
@@ -49,7 +47,7 @@ const validatePurchaseRequest = async (prId, ignoreDuplicateCheck = false) => {
 /**
  * Validate Vendors Array
  */
-const validateVendors = async (vendorIds) => {
+const validateVendors = async (organizationId, vendorIds) => {
   if (!vendorIds || vendorIds.length === 0) {
     throw new ApiError(400, "At least one vendor must be selected");
   }
@@ -62,16 +60,9 @@ const validateVendors = async (vendorIds) => {
     throw new ApiError(400, "Duplicate vendors are not allowed");
   }
 
-  const vendors = await Vendor.find({ _id: { $in: uniqueVendorIds } });
-  
-  if (vendors.length !== uniqueVendorIds.length) {
-    throw new ApiError(400, "One or more selected vendors do not exist");
-  }
+  const vendors = await TenantReferenceValidator.validateVendors(organizationId, uniqueVendorIds);
 
   for (const vendor of vendors) {
-    if (vendor.isDeleted) {
-      throw new ApiError(400, `Vendor ${vendor.companyName} is deleted and cannot be selected`);
-    }
     if (vendor.status !== "Active") {
       throw new ApiError(400, `Vendor ${vendor.companyName} is not active`);
     }
@@ -83,11 +74,11 @@ const validateVendors = async (vendorIds) => {
 /**
  * Create RFQ
  */
-const createRFQ = async (rfqData, user) => {
+const createRFQ = async (organizationId, rfqData, user) => {
   const { purchaseRequest: prId, vendors, title, description, quotationDeadline } = rfqData;
 
-  const pr = await validatePurchaseRequest(prId);
-  const validatedVendors = await validateVendors(vendors);
+  const pr = await validatePurchaseRequest(organizationId, prId);
+  const validatedVendors = await validateVendors(organizationId, vendors);
 
   const rfqNumber = await generateRFQCode();
 
@@ -98,7 +89,7 @@ const createRFQ = async (rfqData, user) => {
     priority: pr.priority,
   };
 
-  const newRFQ = await RFQ.create({
+  const newRFQ = await RFQRepository.create(organizationId, {
     rfqNumber,
     purchaseRequest: prId,
     purchaseRequestSnapshot,
@@ -123,14 +114,15 @@ const createRFQ = async (rfqData, user) => {
     ],
   });
 
-  console.log(`[LOG] RFQ Created: ${newRFQ.rfqNumber} for PR-${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+  console.log(`[LOG] RFQ Created: ${newRFQ.rfqNumber} for PR-${pr.requestNumber} in Org: ${organizationId} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "CREATE_RFQ",
     entityType: "RFQ",
     entityId: newRFQ._id,
-    newValue: newRFQ.toObject(),
+    newValue: newRFQ.toObject ? newRFQ.toObject() : newRFQ,
   });
 
   return newRFQ;
@@ -139,8 +131,8 @@ const createRFQ = async (rfqData, user) => {
 /**
  * Update Draft RFQ
  */
-const updateRFQ = async (id, updateData, user) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
+const updateRFQ = async (organizationId, id, updateData, user) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
   if (rfq.status !== "DRAFT") {
@@ -148,28 +140,29 @@ const updateRFQ = async (id, updateData, user) => {
   }
 
   if (updateData.vendors) {
-    const validatedVendors = await validateVendors(updateData.vendors);
+    const validatedVendors = await validateVendors(organizationId, updateData.vendors);
     rfq.vendors = validatedVendors;
     rfq.vendorResponses.totalVendors = validatedVendors.length;
     rfq.vendorResponses.pending = validatedVendors.length;
-    rfq.vendorResponses.responded = 0; // assuming draft state means 0 responses
+    rfq.vendorResponses.responded = 0;
   }
 
   if (updateData.title) rfq.title = updateData.title;
   if (updateData.description !== undefined) rfq.description = updateData.description;
   if (updateData.quotationDeadline) rfq.quotationDeadline = updateData.quotationDeadline;
 
-  const oldVal = rfq.toObject();
+  const oldVal = rfq.toObject ? rfq.toObject() : rfq;
   rfq.updatedBy = user._id;
   await rfq.save();
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "UPDATE_RFQ",
     entityType: "RFQ",
     entityId: id,
     oldValue: oldVal,
-    newValue: rfq.toObject(),
+    newValue: rfq.toObject ? rfq.toObject() : rfq,
   });
 
   return rfq;
@@ -178,7 +171,7 @@ const updateRFQ = async (id, updateData, user) => {
 /**
  * Get RFQs
  */
-const getRFQs = async (query) => {
+const getRFQs = async (organizationId, query) => {
   const { 
     search, 
     status, 
@@ -213,16 +206,19 @@ const getRFQs = async (query) => {
   const pageSize = parseInt(limit, 10) || 10;
   const skip = (pageNumber - 1) * pageSize;
 
-  const rfqs = await RFQ.find(filter)
-    .sort(sortObj)
-    .skip(skip)
-    .limit(pageSize)
-    .populate("purchaseRequest", "requestNumber title status")
-    .populate("vendors", "companyName vendorCode status")
-    .populate("createdBy", "fullName email")
-    .populate("updatedBy", "fullName email");
+  const rfqs = await RFQRepository.findMany(organizationId, filter, null, {
+    sort: sortObj,
+    skip,
+    limit: pageSize,
+    populate: [
+      { path: "purchaseRequest", select: "requestNumber title status" },
+      { path: "vendors", select: "companyName vendorCode status" },
+      { path: "createdBy", select: "fullName email" },
+      { path: "updatedBy", select: "fullName email" }
+    ]
+  });
 
-  const total = await RFQ.countDocuments(filter);
+  const total = await RFQRepository.count(organizationId, filter);
 
   return {
     rfqs,
@@ -236,13 +232,16 @@ const getRFQs = async (query) => {
 /**
  * Get RFQ By ID
  */
-const getRFQById = async (id) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false })
-    .populate("purchaseRequest", "requestNumber title status department requiredDate estimatedCost")
-    .populate("vendors", "companyName vendorCode status email contactPerson")
-    .populate("createdBy", "fullName email")
-    .populate("updatedBy", "fullName email")
-    .populate("statusHistory.changedBy", "fullName email");
+const getRFQById = async (organizationId, id) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false }, null, {
+    populate: [
+      { path: "purchaseRequest", select: "requestNumber title status department requiredDate estimatedCost" },
+      { path: "vendors", select: "companyName vendorCode status email contactPerson" },
+      { path: "createdBy", select: "fullName email" },
+      { path: "updatedBy", select: "fullName email" },
+      { path: "statusHistory.changedBy", select: "fullName email" }
+    ]
+  });
 
   if (!rfq) throw new ApiError(404, "RFQ not found");
   return rfq;
@@ -251,8 +250,8 @@ const getRFQById = async (id) => {
 /**
  * Send RFQ (DRAFT -> SENT)
  */
-const sendRFQ = async (id, user) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
+const sendRFQ = async (organizationId, id, user) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
   if (rfq.status !== "DRAFT") {
@@ -268,23 +267,24 @@ const sendRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
-  const oldVal = rfq.toObject();
+  const oldVal = rfq.toObject ? rfq.toObject() : rfq;
   await rfq.save();
   console.log(`[LOG] RFQ Sent: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "SEND_RFQ",
     entityType: "RFQ",
     entityId: rfq._id,
     oldValue: oldVal,
-    newValue: rfq.toObject(),
+    newValue: rfq.toObject ? rfq.toObject() : rfq,
   });
 
   // Notify Managers that RFQ has been sent
-  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const managers = await User.find({ organization: organizationId, role: { $in: ["Manager", "Admin"] }, isActive: true });
   const notificationPromises = managers.map(mgr => 
-    notificationService.createNotification({
+    notificationService.createNotification(organizationId, {
       recipient: mgr._id,
       sender: user._id,
       type: "RFQ_INVITED",
@@ -308,8 +308,8 @@ const sendRFQ = async (id, user) => {
 /**
  * Close RFQ (SENT/PARTIALLY_RESPONDED -> CLOSED)
  */
-const closeRFQ = async (id, user) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
+const closeRFQ = async (organizationId, id, user) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
   if (!["SENT", "PARTIALLY_RESPONDED"].includes(rfq.status)) {
@@ -325,17 +325,18 @@ const closeRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
-  const oldVal = rfq.toObject();
+  const oldVal = rfq.toObject ? rfq.toObject() : rfq;
   await rfq.save();
   console.log(`[LOG] RFQ Closed: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "CLOSE_RFQ",
     entityType: "RFQ",
     entityId: rfq._id,
     oldValue: oldVal,
-    newValue: rfq.toObject(),
+    newValue: rfq.toObject ? rfq.toObject() : rfq,
   });
 
   return rfq;
@@ -344,8 +345,8 @@ const closeRFQ = async (id, user) => {
 /**
  * Cancel RFQ (DRAFT -> CANCELLED)
  */
-const cancelRFQ = async (id, user) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
+const cancelRFQ = async (organizationId, id, user) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
   if (rfq.status !== "DRAFT") {
@@ -360,30 +361,31 @@ const cancelRFQ = async (id, user) => {
     changedAt: new Date(),
   });
 
-  const oldVal = rfq.toObject();
+  const oldVal = rfq.toObject ? rfq.toObject() : rfq;
   await rfq.save();
   console.log(`[LOG] RFQ Cancelled: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "CANCEL_RFQ",
     entityType: "RFQ",
     entityId: rfq._id,
     oldValue: oldVal,
-    newValue: rfq.toObject(),
+    newValue: rfq.toObject ? rfq.toObject() : rfq,
   });
 
   return rfq;
 };
 
 /**
- * Delete RFQ (Soft Delete, Admin only typically handled by middleware)
+ * Delete RFQ
  */
-const deleteRFQ = async (id, user) => {
-  const rfq = await RFQ.findOne({ _id: id, isDeleted: false });
+const deleteRFQ = async (organizationId, id, user) => {
+  const rfq = await RFQRepository.findOne(organizationId, { _id: id, isDeleted: false });
   if (!rfq) throw new ApiError(404, "RFQ not found");
 
-  const oldVal = rfq.toObject();
+  const oldVal = rfq.toObject ? rfq.toObject() : rfq;
   rfq.isDeleted = true;
   rfq.updatedBy = user._id;
   await rfq.save();
@@ -391,6 +393,7 @@ const deleteRFQ = async (id, user) => {
   console.log(`[LOG] RFQ Deleted: ${rfq.rfqNumber} for PR-${rfq.purchaseRequestSnapshot.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "DELETE_RFQ",
     entityType: "RFQ",

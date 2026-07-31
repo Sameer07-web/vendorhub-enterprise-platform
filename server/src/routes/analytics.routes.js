@@ -7,7 +7,7 @@ const { protect } = require("../middleware/auth.middleware");
 router.use(protect);
 
 router.get("/overview", analyticsController.getOverview);
-router.get("/dashboard", analyticsController.getDashboardKPIs);
+router.get("/kpis", analyticsController.getDashboardKPIs);
 router.get("/spend", analyticsController.getSpendAnalytics);
 router.get("/vendors", analyticsController.getVendorAnalytics);
 router.get("/departments", analyticsController.getDepartmentAnalytics);

@@ -1,21 +1,21 @@
-const SavedReport = require('../models/SavedReport');
-const ExportJob = require('../models/ExportJob');
+const SavedReportRepository = require('../repositories/SavedReportRepository');
+const ExportJobRepository = require('../repositories/ExportJobRepository');
 
 class SavedReportService {
-  async getSavedReports(userId) {
-    return await SavedReport.find({ user: userId }).sort({ folder: 1, name: 1 });
+  async getSavedReports(sessionOrOrgId, userId) {
+    return await SavedReportRepository.findMany(sessionOrOrgId, { user: userId }, null, { sort: { folder: 1, name: 1 } });
   }
 
-  async getRecentReportsAndJobs(userId) {
-    const recentSaved = await SavedReport.find({ user: userId, lastRunAt: { $ne: null } })
-      .sort({ lastRunAt: -1 })
-      .limit(10)
-      .lean();
+  async getRecentReportsAndJobs(sessionOrOrgId, userId) {
+    const recentSaved = await SavedReportRepository.findMany(sessionOrOrgId, { user: userId, lastRunAt: { $ne: null } }, null, {
+      sort: { lastRunAt: -1 },
+      limit: 10
+    });
 
-    const recentJobs = await ExportJob.find({ user: userId })
-      .sort({ lastRunAt: -1 })
-      .limit(10)
-      .lean();
+    const recentJobs = await ExportJobRepository.findMany(sessionOrOrgId, { user: userId }, null, {
+      sort: { lastRunAt: -1 },
+      limit: 10
+    });
 
     // Combine and sort by lastRunAt DESC
     const combined = [...recentSaved, ...recentJobs].sort((a, b) => new Date(b.lastRunAt) - new Date(a.lastRunAt));
@@ -35,30 +35,31 @@ class SavedReportService {
     return unique;
   }
 
-  async createSavedReport(userId, data) {
-    const report = new SavedReport({
+  async createSavedReport(sessionOrOrgId, userId, data) {
+    return await SavedReportRepository.create(sessionOrOrgId, {
       ...data,
       user: userId
     });
-    return await report.save();
   }
 
-  async updateSavedReport(userId, reportId, data) {
-    return await SavedReport.findOneAndUpdate(
+  async updateSavedReport(sessionOrOrgId, userId, reportId, data) {
+    return await SavedReportRepository.update(
+      sessionOrOrgId,
       { _id: reportId, user: userId },
-      { $set: data },
+      data,
       { new: true }
     );
   }
 
-  async deleteSavedReport(userId, reportId) {
-    return await SavedReport.findOneAndDelete({ _id: reportId, user: userId });
+  async deleteSavedReport(sessionOrOrgId, userId, reportId) {
+    return await SavedReportRepository.delete(sessionOrOrgId, { _id: reportId, user: userId });
   }
 
-  async markAsRun(userId, reportId) {
-    return await SavedReport.findOneAndUpdate(
+  async markAsRun(sessionOrOrgId, userId, reportId) {
+    return await SavedReportRepository.update(
+      sessionOrOrgId,
       { _id: reportId, user: userId },
-      { $set: { lastRunAt: new Date() } },
+      { lastRunAt: new Date() },
       { new: true }
     );
   }

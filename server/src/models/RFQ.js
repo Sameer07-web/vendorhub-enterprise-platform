@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const rfqSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: true,
+      index: true
+    },
     rfqNumber: {
       type: String,
       required: true,
@@ -80,9 +86,15 @@ const rfqSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    versionKey: false,
+    optimisticConcurrency: true,
   }
 );
+
+// Compound indexes for multi-tenant performance
+rfqSchema.index({ organization: 1, status: 1 });
+rfqSchema.index({ organization: 1, isDeleted: 1 });
+rfqSchema.index({ organization: 1, createdAt: -1 });
+rfqSchema.index({ organization: 1, rfqNumber: 1 }, { unique: true });
 
 // Indexes for performance optimization
 rfqSchema.index({ isDeleted: 1, status: 1 });

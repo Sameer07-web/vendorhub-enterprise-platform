@@ -1,20 +1,13 @@
-const WorkflowRule = require('../../models/WorkflowRule');
+const WorkflowRuleRepository = require('../../repositories/WorkflowRuleRepository');
 
 class RuleEngineService {
   /**
    * Find the matching WorkflowRule for a given entity context.
-   * @param {String} entityType e.g., 'PurchaseRequest'
-   * @param {Object} contextData e.g., { departmentId, amount }
-   * @returns {Object} The matched rule, or null
    */
-  async findMatchingRule(entityType, contextData) {
+  async findMatchingRule(sessionOrOrgId, entityType, contextData) {
     const { departmentId, amount } = contextData;
 
-    // We look for active rules for this entityType where the conditions match.
-    // In a real system, you might have multiple matching rules and pick the most specific one.
-    // For simplicity, we find the first one that fits the amount bounds.
-
-    const rules = await WorkflowRule.find({ 
+    const rules = await WorkflowRuleRepository.findMany(sessionOrOrgId, { 
       entityType,
       isActive: true,
       $or: [
@@ -24,14 +17,10 @@ class RuleEngineService {
       ]
     });
 
-    // Filter by amount locally (could also be done in Mongo query)
     const matchedRule = rules.find(rule => {
-      const min = rule.conditions.minAmount || 0;
-      const max = rule.conditions.maxAmount || Number.MAX_SAFE_INTEGER;
-      
-      // If amount isn't provided, we only match rules that don't care about amount
+      const min = rule.conditions?.minAmount || 0;
+      const max = rule.conditions?.maxAmount || Number.MAX_SAFE_INTEGER;
       const val = amount || 0;
-      
       return val >= min && val <= max;
     });
 

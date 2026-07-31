@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
     title: {
       type: String,
       required: true,
@@ -76,6 +82,9 @@ const notificationSchema = new mongoose.Schema(
 );
 
 // Indexes for performance (Phase 10 requirements)
+notificationSchema.index({ organization: 1, recipient: 1, isRead: 1 });
+notificationSchema.index({ organization: 1, recipient: 1, createdAt: -1 });
+notificationSchema.index({ organization: 1, createdAt: -1 });
 notificationSchema.index({ recipient: 1, isRead: 1 });
 notificationSchema.index({ recipient: 1, createdAt: -1 });
 notificationSchema.index({ type: 1 });

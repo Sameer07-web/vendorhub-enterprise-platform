@@ -1,46 +1,28 @@
-const Vendor = require("../models/Vendor");
-const PurchaseRequest = require("../models/PurchaseRequest");
-const RFQ = require("../models/RFQ");
-const Quotation = require("../models/Quotation");
+const VendorRepository = require("../repositories/VendorRepository");
+const PurchaseRequestRepository = require("../repositories/PurchaseRequestRepository");
+const RFQRepository = require("../repositories/RFQRepository");
+const QuotationRepository = require("../repositories/QuotationRepository");
+const TenantAggregationBuilder = require("../utils/TenantAggregationBuilder");
 const cache = require("../utils/cache");
 
-/**
- * Parses the range query parameter into a MongoDB date filter object.
- * @param {string} range e.g., '30d', '90d', '6m', '12m', 'all'
- * @returns {Date|null} the start date, or null if 'all'
- */
 const getStartDateFromRange = (range) => {
   if (!range || range === "all") return null;
   const now = new Date();
-  
-  // Set to midnight UTC for consistent reporting
   now.setUTCHours(0, 0, 0, 0);
 
-  if (range === "30d") {
-    now.setUTCDate(now.getUTCDate() - 30);
-  } else if (range === "90d") {
-    now.setUTCDate(now.getUTCDate() - 90);
-  } else if (range === "6m") {
-    now.setUTCMonth(now.getUTCMonth() - 6);
-  } else if (range === "12m") {
-    now.setUTCMonth(now.getUTCMonth() - 12);
-  } else {
-    // Default fallback to 30d if invalid range
-    now.setUTCDate(now.getUTCDate() - 30);
-  }
+  if (range === "30d") now.setUTCDate(now.getUTCDate() - 30);
+  else if (range === "90d") now.setUTCDate(now.getUTCDate() - 90);
+  else if (range === "6m") now.setUTCMonth(now.getUTCMonth() - 6);
+  else if (range === "12m") now.setUTCMonth(now.getUTCMonth() - 12);
+  else now.setUTCDate(now.getUTCDate() - 30);
+
   return now;
 };
 
-/**
- * Builds the $match stage for the start date based on the provided field name.
- */
 const getDateMatch = (field, startDate) => {
   return startDate ? { [field]: { $gte: startDate } } : {};
 };
 
-/**
- * Formats a metric into a standard DTO.
- */
 const formatMetric = (title, value, change = 0, trend = "neutral") => ({
   title,
   value,
@@ -49,17 +31,22 @@ const formatMetric = (title, value, change = 0, trend = "neutral") => ({
 });
 
 class AnalyticsService {
-  
-  async getDashboardKPIs(range = "30d") {
-    const cacheKey = `kpis_${range}`;
+  _getOrgId(sessionOrOrgId) {
+    if (!sessionOrOrgId) throw new Error("AnalyticsService: Tenant context is required.");
+    return sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+  }
+
+  async getDashboardKPIs(sessionOrOrgId, range = "30d") {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const cacheKey = `organization:${orgId}:kpis_${range}`;
     const cached = await cache.get(cacheKey);
     if (cached) return cached;
 
     const startDate = getStartDateFromRange(range);
-    
+
     // 1. Total and Active Vendors
     const vendorMatch = getDateMatch("createdAt", startDate);
-    const vendorStats = await Vendor.aggregate([
+    const vendorPipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, ...vendorMatch } },
       { 
         $group: { 
@@ -69,10 +56,11 @@ class AnalyticsService {
         }
       }
     ]);
+    const vendorStats = await VendorRepository.aggregate(orgId, vendorPipeline);
 
     // 2. PR Stats
     const prMatch = getDateMatch("createdAt", startDate);
-    const prStats = await PurchaseRequest.aggregate([
+    const prPipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, ...prMatch } },
       {
         $group: {
@@ -81,7 +69,6 @@ class AnalyticsService {
           pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING_APPROVAL"] }, 1, 0] } },
           approved: { $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] } },
           rejected: { $sum: { $cond: [{ $eq: ["$status", "REJECTED"] }, 1, 0] } },
-          // Average approval time (in milliseconds)
           avgApprovalTimeMs: {
             $avg: {
               $cond: [
@@ -94,10 +81,11 @@ class AnalyticsService {
         }
       }
     ]);
+    const prStats = await PurchaseRequestRepository.aggregate(orgId, prPipeline);
 
     // 3. RFQ Stats
     const rfqMatch = getDateMatch("createdAt", startDate);
-    const rfqStats = await RFQ.aggregate([
+    const rfqPipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, ...rfqMatch } },
       {
         $group: {
@@ -105,7 +93,6 @@ class AnalyticsService {
           total: { $sum: 1 },
           active: { $sum: { $cond: [{ $in: ["$status", ["SENT", "PARTIALLY_RESPONDED"]] }, 1, 0] } },
           closed: { $sum: { $cond: [{ $eq: ["$status", "CLOSED"] }, 1, 0] } },
-          // Average RFQ lifecycle (in milliseconds)
           avgLifecycleMs: {
             $avg: {
               $cond: [
@@ -118,10 +105,11 @@ class AnalyticsService {
         }
       }
     ]);
+    const rfqStats = await RFQRepository.aggregate(orgId, rfqPipeline);
 
-    // 4. Quotation & Spend Stats
+    // 4. Quotation Stats
     const quoteMatch = getDateMatch("createdAt", startDate);
-    const quoteStats = await Quotation.aggregate([
+    const quotePipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, ...quoteMatch } },
       {
         $group: {
@@ -132,14 +120,13 @@ class AnalyticsService {
         }
       }
     ]);
+    const quoteStats = await QuotationRepository.aggregate(orgId, quotePipeline);
 
     const vStats = vendorStats[0] || { total: 0, active: 0 };
     const pStats = prStats[0] || { total: 0, pending: 0, approved: 0, rejected: 0, avgApprovalTimeMs: 0 };
     const rStats = rfqStats[0] || { total: 0, active: 0, closed: 0, avgLifecycleMs: 0 };
     const qStats = quoteStats[0] || { total: 0, awarded: 0, totalSpend: 0 };
 
-    // Format average times to readable strings or raw values. 
-    // Here we return hours for ease of consumption by frontend.
     const avgApprovalHours = pStats.avgApprovalTimeMs ? (pStats.avgApprovalTimeMs / (1000 * 60 * 60)).toFixed(1) : 0;
     const avgRfqHours = rStats.avgLifecycleMs ? (rStats.avgLifecycleMs / (1000 * 60 * 60)).toFixed(1) : 0;
 
@@ -160,16 +147,16 @@ class AnalyticsService {
     return result;
   }
 
-  async getSpendAnalytics(range = "12m") {
-    const cacheKey = `spend_${range}`;
+  async getSpendAnalytics(sessionOrOrgId, range = "12m") {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const cacheKey = `organization:${orgId}:spend_${range}`;
     const cached = await cache.get(cacheKey);
     if (cached) return cached;
 
     const startDate = getStartDateFromRange(range);
     const dateMatch = getDateMatch("quotationDate", startDate);
 
-    // Group by Month/Year in UTC
-    const spendOverTime = await Quotation.aggregate([
+    const pipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, isWinner: true, ...dateMatch } },
       {
         $group: {
@@ -193,19 +180,21 @@ class AnalyticsService {
       }
     ]);
 
+    const spendOverTime = await QuotationRepository.aggregate(orgId, pipeline);
     await cache.set(cacheKey, spendOverTime);
     return spendOverTime;
   }
 
-  async getVendorAnalytics(range = "all") {
-    const cacheKey = `vendor_analytics_${range}`;
+  async getVendorAnalytics(sessionOrOrgId, range = "all") {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const cacheKey = `organization:${orgId}:vendor_analytics_${range}`;
     const cached = await cache.get(cacheKey);
     if (cached) return cached;
 
     const startDate = getStartDateFromRange(range);
     const dateMatch = getDateMatch("quotationDate", startDate);
 
-    const topVendorsBySpend = await Quotation.aggregate([
+    const pipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, isWinner: true, ...dateMatch } },
       {
         $group: {
@@ -236,21 +225,21 @@ class AnalyticsService {
       }
     ]);
 
+    const topVendorsBySpend = await QuotationRepository.aggregate(orgId, pipeline);
     await cache.set(cacheKey, topVendorsBySpend);
     return topVendorsBySpend;
   }
 
-  async getDepartmentAnalytics(range = "all") {
-    const cacheKey = `department_analytics_${range}`;
+  async getDepartmentAnalytics(sessionOrOrgId, range = "all") {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const cacheKey = `organization:${orgId}:department_analytics_${range}`;
     const cached = await cache.get(cacheKey);
     if (cached) return cached;
 
     const startDate = getStartDateFromRange(range);
     const dateMatch = getDateMatch("quotationDate", startDate);
 
-    // Calculate spend per department.
-    // Quotation (isWinner: true) -> RFQ -> PurchaseRequest (department)
-    const deptSpend = await Quotation.aggregate([
+    const pipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, isWinner: true, ...dateMatch } },
       {
         $lookup: {
@@ -288,19 +277,21 @@ class AnalyticsService {
       }
     ]);
 
+    const deptSpend = await QuotationRepository.aggregate(orgId, pipeline);
     await cache.set(cacheKey, deptSpend);
     return deptSpend;
   }
 
-  async getProcurementAnalytics(range = "30d") {
-    const cacheKey = `proc_analytics_${range}`;
+  async getProcurementAnalytics(sessionOrOrgId, range = "30d") {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const cacheKey = `organization:${orgId}:proc_analytics_${range}`;
     const cached = await cache.get(cacheKey);
     if (cached) return cached;
 
     const startDate = getStartDateFromRange(range);
     const rfqMatch = getDateMatch("createdAt", startDate);
 
-    const rfqStats = await RFQ.aggregate([
+    const pipeline = TenantAggregationBuilder.build(orgId, [
       { $match: { isDeleted: false, ...rfqMatch } },
       {
         $group: {
@@ -324,6 +315,7 @@ class AnalyticsService {
       }
     ]);
 
+    const rfqStats = await RFQRepository.aggregate(orgId, pipeline);
     const stats = rfqStats[0] || { avgLifecycleMs: 0, pendingWorkload: 0, completedProcurement: 0 };
     const avgLifecycleDays = stats.avgLifecycleMs ? (stats.avgLifecycleMs / (1000 * 60 * 60 * 24)).toFixed(1) : 0;
 
@@ -336,7 +328,6 @@ class AnalyticsService {
     await cache.set(cacheKey, result);
     return result;
   }
-
 }
 
 module.exports = new AnalyticsService();

@@ -6,6 +6,10 @@ const escapeRegex = require("../utils/escapeRegex");
 const { logEvent } = require("./audit.service");
 const notificationService = require("./notification.service");
 const User = require("../models/User");
+const TenantRepository = require("../repositories/tenantRepository");
+
+const prRepo = new TenantRepository(PurchaseRequest);
+const vendorRepo = new TenantRepository(Vendor);
 
 /**
  * Generate Next PR Code safely using Counters collection
@@ -23,8 +27,8 @@ const generatePRCode = async () => {
 /**
  * Check vendor validity
  */
-const checkVendorValidity = async (vendorId) => {
-  const vendor = await Vendor.findById(vendorId);
+const checkVendorValidity = async (organizationId, vendorId) => {
+  const vendor = await vendorRepo.findById(organizationId, vendorId);
   if (!vendor || vendor.isDeleted) {
     throw new ApiError(400, "Selected vendor does not exist");
   }
@@ -36,8 +40,8 @@ const checkVendorValidity = async (vendorId) => {
 /**
  * Create PR
  */
-const createPurchaseRequest = async (prData, user) => {
-  await checkVendorValidity(prData.vendor);
+const createPurchaseRequest = async (organizationId, prData, user) => {
+  await checkVendorValidity(organizationId, prData.vendor);
 
   const requestNumber = await generatePRCode();
 
@@ -49,10 +53,11 @@ const createPurchaseRequest = async (prData, user) => {
     updatedBy: user._id,
   };
 
-  const pr = await PurchaseRequest.create(dataToSave);
-  console.log(`[LOG] Purchase Request Created: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
+  const pr = await prRepo.create(organizationId, dataToSave);
+  console.log(`[LOG] Purchase Request Created: ${pr.requestNumber} in Org: ${organizationId} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "CREATE_PR",
     entityType: "PurchaseRequest",
@@ -66,7 +71,7 @@ const createPurchaseRequest = async (prData, user) => {
 /**
  * Get PRs (with search, filter, pagination, RBAC)
  */
-const getPurchaseRequests = async (query, user) => {
+const getPurchaseRequests = async (organizationId, query, user) => {
   const {
     search,
     status,
@@ -109,7 +114,7 @@ const getPurchaseRequests = async (query, user) => {
   const pageSize = parseInt(limit, 10) || 10;
   const skip = (pageNumber - 1) * pageSize;
 
-  const requests = await PurchaseRequest.find(filter)
+  const requests = await prRepo.find(organizationId, filter)
     .sort(sortObj)
     .skip(skip)
     .limit(pageSize)
@@ -117,7 +122,7 @@ const getPurchaseRequests = async (query, user) => {
     .populate("createdBy", "fullName email")
     .populate("approvedBy", "fullName email");
 
-  const total = await PurchaseRequest.countDocuments(filter);
+  const total = await prRepo.countDocuments(organizationId, filter);
 
   return {
     purchaseRequests: requests,
@@ -131,8 +136,8 @@ const getPurchaseRequests = async (query, user) => {
 /**
  * Get PR by ID
  */
-const getPurchaseRequestById = async (id, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false })
+const getPurchaseRequestById = async (organizationId, id, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false })
     .populate("vendor", "companyName vendorCode gstNumber status")
     .populate("createdBy", "fullName email")
     .populate("approvedBy", "fullName email");
@@ -149,8 +154,8 @@ const getPurchaseRequestById = async (id, user) => {
 /**
  * Update PR
  */
-const updatePurchaseRequest = async (id, updateData, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
+const updatePurchaseRequest = async (organizationId, id, updateData, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
   if (pr.createdBy.toString() !== user._id.toString()) {
@@ -162,15 +167,16 @@ const updatePurchaseRequest = async (id, updateData, user) => {
   }
 
   if (updateData.vendor) {
-    await checkVendorValidity(updateData.vendor);
+    await checkVendorValidity(organizationId, updateData.vendor);
   }
 
   const oldVal = pr.toObject();
   updateData.updatedBy = user._id;
 
-  const updatedPr = await PurchaseRequest.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+  const updatedPr = await prRepo.findByIdAndUpdate(organizationId, id, updateData, { new: true, runValidators: true });
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "UPDATE_PR",
     entityType: "PurchaseRequest",
@@ -185,8 +191,8 @@ const updatePurchaseRequest = async (id, updateData, user) => {
 /**
  * Submit PR
  */
-const submitPurchaseRequest = async (id, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
+const submitPurchaseRequest = async (organizationId, id, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
   if (pr.createdBy.toString() !== user._id.toString()) {
@@ -206,6 +212,7 @@ const submitPurchaseRequest = async (id, user) => {
   console.log(`[LOG] Purchase Request Submitted: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "SUBMIT_PR",
     entityType: "PurchaseRequest",
@@ -215,9 +222,9 @@ const submitPurchaseRequest = async (id, user) => {
   });
 
   // Notify Managers
-  const managers = await User.find({ role: { $in: ["Manager", "Admin"] }, isActive: true });
+  const managers = await User.find({ organization: organizationId, role: { $in: ["Manager", "Admin"] }, isActive: true });
   const notificationPromises = managers.map(mgr => 
-    notificationService.createNotification({
+    notificationService.createNotification(organizationId, {
       recipient: mgr._id,
       sender: user._id,
       type: "PR_SUBMITTED",
@@ -241,8 +248,8 @@ const submitPurchaseRequest = async (id, user) => {
 /**
  * Approve PR
  */
-const approvePurchaseRequest = async (id, comments, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
+const approvePurchaseRequest = async (organizationId, id, comments, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
   if (pr.status !== "PENDING_APPROVAL") {
@@ -261,6 +268,7 @@ const approvePurchaseRequest = async (id, comments, user) => {
   console.log(`[LOG] Purchase Request Approved: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "APPROVE_PR",
     entityType: "PurchaseRequest",
@@ -270,7 +278,7 @@ const approvePurchaseRequest = async (id, comments, user) => {
   });
 
   // Notify Creator
-  await notificationService.createNotification({
+  await notificationService.createNotification(organizationId, {
     recipient: pr.createdBy,
     sender: user._id,
     type: "PR_APPROVED",
@@ -292,8 +300,8 @@ const approvePurchaseRequest = async (id, comments, user) => {
 /**
  * Reject PR
  */
-const rejectPurchaseRequest = async (id, comments, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
+const rejectPurchaseRequest = async (organizationId, id, comments, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
   if (pr.status !== "PENDING_APPROVAL") {
@@ -315,6 +323,7 @@ const rejectPurchaseRequest = async (id, comments, user) => {
   console.log(`[LOG] Purchase Request Rejected: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "REJECT_PR",
     entityType: "PurchaseRequest",
@@ -324,7 +333,7 @@ const rejectPurchaseRequest = async (id, comments, user) => {
   });
 
   // Notify Creator
-  await notificationService.createNotification({
+  await notificationService.createNotification(organizationId, {
     recipient: pr.createdBy,
     sender: user._id,
     type: "PR_REJECTED",
@@ -346,8 +355,8 @@ const rejectPurchaseRequest = async (id, comments, user) => {
 /**
  * Delete PR (Soft)
  */
-const deletePurchaseRequest = async (id, user) => {
-  const pr = await PurchaseRequest.findOne({ _id: id, isDeleted: false });
+const deletePurchaseRequest = async (organizationId, id, user) => {
+  const pr = await prRepo.findOne(organizationId, { _id: id, isDeleted: false });
   if (!pr) throw new ApiError(404, "Purchase Request not found");
 
   const oldVal = pr.toObject();
@@ -358,6 +367,7 @@ const deletePurchaseRequest = async (id, user) => {
   console.log(`[LOG] Purchase Request Deleted: ${pr.requestNumber} by User: ${user._id} at ${new Date().toISOString()}`);
 
   await logEvent({
+    organizationId,
     userId: user._id,
     action: "DELETE_PR",
     entityType: "PurchaseRequest",

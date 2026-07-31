@@ -1,12 +1,11 @@
-const DashboardPreference = require('../models/DashboardPreference');
+const DashboardPreferenceRepository = require('../repositories/DashboardPreferenceRepository');
 
 class DashboardPreferenceService {
-  async getPreferences(userId) {
-    let prefs = await DashboardPreference.findOne({ user: userId });
+  async getPreferences(sessionOrOrgId, userId) {
+    let prefs = await DashboardPreferenceRepository.findOne(sessionOrOrgId, { user: userId });
     
-    // Auto-create default if not exists
     if (!prefs) {
-      prefs = await DashboardPreference.create({
+      prefs = await DashboardPreferenceRepository.create(sessionOrOrgId, {
         user: userId,
         template: 'Executive',
         density: 'spacious',
@@ -36,8 +35,10 @@ class DashboardPreferenceService {
     return prefs;
   }
 
-  async updatePreferences(userId, data) {
-    return await DashboardPreference.findOneAndUpdate(
+  async updatePreferences(sessionOrOrgId, userId, data) {
+    const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+    return await DashboardPreferenceRepository.tenantRepo.findOneAndUpdate(
+      orgId,
       { user: userId },
       { $set: data },
       { new: true, upsert: true }

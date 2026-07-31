@@ -49,6 +49,7 @@ const getNotifications = catchAsync(async (req, res) => {
   }
 
   const result = await notificationService.getUserNotifications(
+    req.organization._id,
     req.user._id,
     filters,
     { page: parseInt(page, 10), limit: parseInt(limit, 10) }
@@ -61,7 +62,7 @@ const getNotifications = catchAsync(async (req, res) => {
  * Get unread notification count
  */
 const getUnreadCount = catchAsync(async (req, res) => {
-  const count = await notificationService.getUnreadCount(req.user._id);
+  const count = await notificationService.getUnreadCount(req.organization._id, req.user._id);
   res.status(200).json(new ApiResponse(200, "Unread count retrieved", { count }));
 });
 
@@ -69,7 +70,7 @@ const getUnreadCount = catchAsync(async (req, res) => {
  * Mark a specific notification as read
  */
 const markAsRead = catchAsync(async (req, res) => {
-  const notification = await notificationService.markAsRead(req.params.id, req.user._id);
+  const notification = await notificationService.markAsRead(req.organization._id, req.params.id, req.user._id);
   
   if (!notification) {
     throw new ApiError(404, "Notification not found or unauthorized");
@@ -82,7 +83,7 @@ const markAsRead = catchAsync(async (req, res) => {
  * Mark all notifications as read
  */
 const markAllAsRead = catchAsync(async (req, res) => {
-  const modifiedCount = await notificationService.markAllAsRead(req.user._id);
+  const modifiedCount = await notificationService.markAllAsRead(req.organization._id, req.user._id);
   res.status(200).json(new ApiResponse(200, "All notifications marked as read", { modifiedCount }));
 });
 
@@ -90,7 +91,7 @@ const markAllAsRead = catchAsync(async (req, res) => {
  * Delete a specific notification
  */
 const deleteNotification = catchAsync(async (req, res) => {
-  const notification = await notificationService.deleteNotification(req.params.id, req.user._id);
+  const notification = await notificationService.deleteNotification(req.organization._id, req.params.id, req.user._id);
   
   if (!notification) {
     throw new ApiError(404, "Notification not found or unauthorized");
@@ -103,7 +104,7 @@ const deleteNotification = catchAsync(async (req, res) => {
  * Clear all read notifications
  */
 const clearRead = catchAsync(async (req, res) => {
-  const deletedCount = await notificationService.clearReadNotifications(req.user._id);
+  const deletedCount = await notificationService.clearReadNotifications(req.organization._id, req.user._id);
   res.status(200).json(new ApiResponse(200, "Read notifications cleared", { deletedCount }));
 });
 

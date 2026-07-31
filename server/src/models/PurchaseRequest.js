@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const purchaseRequestSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
     requestNumber: {
       type: String,
       required: true,
@@ -91,8 +97,14 @@ const purchaseRequestSchema = new mongoose.Schema(
   }
 );
 
+// Compound indexes for multi-tenant performance
+purchaseRequestSchema.index({ organization: 1, status: 1 });
+purchaseRequestSchema.index({ organization: 1, isDeleted: 1 });
+purchaseRequestSchema.index({ organization: 1, requestNumber: 1 }, { unique: true });
+
 // Indexes for performance optimization
 purchaseRequestSchema.index({ isDeleted: 1, status: 1 });
+purchaseRequestSchema.index({ vendor: 1 });
 purchaseRequestSchema.index({ createdBy: 1 });
 
 const PurchaseRequest = mongoose.model("PurchaseRequest", purchaseRequestSchema);

@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const savedReportSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -61,8 +67,13 @@ const savedReportSchema = new mongoose.Schema({
     index: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  optimisticConcurrency: true
 });
+
+savedReportSchema.index({ organization: 1, user: 1 });
+savedReportSchema.index({ organization: 1, isFavorite: 1 });
+savedReportSchema.index({ organization: 1, lastRunAt: -1 });
 
 const SavedReport = mongoose.model('SavedReport', savedReportSchema);
 

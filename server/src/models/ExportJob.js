@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const exportJobSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -64,8 +70,13 @@ const exportJobSchema = new mongoose.Schema({
     index: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  optimisticConcurrency: true
 });
+
+exportJobSchema.index({ organization: 1, user: 1 });
+exportJobSchema.index({ organization: 1, status: 1 });
+exportJobSchema.index({ organization: 1, lastRunAt: -1 });
 
 const ExportJob = mongoose.model('ExportJob', exportJobSchema);
 

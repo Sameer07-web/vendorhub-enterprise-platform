@@ -1,15 +1,12 @@
 const geminiProvider = require('./geminiProvider');
 const { QUOTATION_PROMPT } = require('./document/extractionPrompts');
-const AIDocumentExtraction = require('../../models/AIDocumentExtraction');
+const AIDocumentExtractionRepository = require('../../repositories/AIDocumentExtractionRepository');
 
 class DocumentIntelligenceService {
   /**
    * Extract structured data from a document
-   * @param {Object} file - The multer file object
-   * @param {string} documentType - 'Quotation', 'Invoice', etc.
-   * @param {string} userId - ID of the user triggering the extraction
    */
-  async extractDocument(file, documentType, userId) {
+  async extractDocument(sessionOrOrgId, file, documentType, userId) {
     console.log(`[DocumentIntelligence] Extracting ${documentType} from file: ${file.originalname}`);
     const startTime = Date.now();
     
@@ -21,16 +18,14 @@ class DocumentIntelligenceService {
         throw new Error(`Unsupported document type: ${documentType}`);
       }
 
-      // Convert buffer to base64
       const base64Data = file.buffer.toString('base64');
       const mimeType = file.mimetype;
 
-      // Query LLM
       const response = await geminiProvider.generateContent(
         prompt,
-        [], // no history
-        [], // no tools
-        '', // System instruction already in prompt
+        [],
+        [],
+        '',
         null,
         {
           responseMimeType: "application/json",
@@ -44,8 +39,7 @@ class DocumentIntelligenceService {
 
       const extractionLatencyMs = Date.now() - startTime;
       
-      // Save Audit Record
-      const auditRecord = await AIDocumentExtraction.create({
+      const auditRecord = await AIDocumentExtractionRepository.create(sessionOrOrgId, {
         documentType,
         filename: file.originalname,
         mimeType: file.mimetype,

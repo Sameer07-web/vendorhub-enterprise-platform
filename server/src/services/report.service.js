@@ -3,33 +3,37 @@ const exceljs = require('exceljs');
 const PDFDocument = require('pdfkit');
 const { Transform } = require('stream');
 const { AsyncParser } = require('json2csv');
-const AuditLog = require('../models/AuditLog');
+const AuditLogRepository = require('../repositories/AuditLogRepository');
 
 class ReportService {
-  async getPreview(type, filters, user) {
+  _getOrgId(sessionOrOrgId) {
+    if (!sessionOrOrgId) throw new Error("ReportService: Tenant context is required.");
+    return sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+  }
+
+  async getPreview(sessionOrOrgId, type, filters, user) {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const startTime = Date.now();
     const config = REPORT_TYPES[type];
     if (!config) throw new Error(`Report type '${type}' not found.`);
 
-    // Extract columns array from filters if it exists
     let selectedColumns = null;
     if (filters.columns) {
       selectedColumns = Array.isArray(filters.columns) ? filters.columns : filters.columns.split(',');
-      delete filters.columns; // Don't use it for match query
+      delete filters.columns;
     }
 
     const match = config.getMatchQuery(filters);
-    const summary = await config.getSummary(match);
+    const summary = await config.getSummary(orgId, match);
     
-    // Limit preview to 50 records
-    const data = await config.model
-      .find(match)
-      .sort(config.defaultSort)
-      .limit(50)
-      .lean();
+    // Scoped list query through domain repository
+    const data = await config.repository.findMany(orgId, match, null, {
+      sort: config.defaultSort,
+      limit: 50
+    });
 
     const formattedData = data.map(config.formatRecord);
-    const totalRecords = await config.model.countDocuments(match);
+    const totalRecords = await config.repository.count(orgId, match);
     const executionTimeMs = Date.now() - startTime;
 
     const allColumns = config.getColumns();
@@ -53,11 +57,11 @@ class ReportService {
     };
   }
 
-  async logExport(type, format, user) {
+  async logExport(orgId, type, format, user) {
     const config = REPORT_TYPES[type];
-    if (!user) return; // Might be system generated later, but for now we need a user
+    if (!user) return;
     
-    await AuditLog.create({
+    await AuditLogRepository.create(orgId, {
       action: 'EXPORT_REPORT',
       entityType: 'Report',
       user: user._id,
@@ -69,7 +73,8 @@ class ReportService {
     });
   }
 
-  async exportCSV(type, filters, outputStream, user) {
+  async exportCSV(sessionOrOrgId, type, filters, outputStream, user) {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const config = REPORT_TYPES[type];
     if (!config) throw new Error(`Report type '${type}' not found.`);
 
@@ -88,20 +93,18 @@ class ReportService {
     const transformOpts = { objectMode: true };
     const asyncParser = new AsyncParser(opts, transformOpts);
     
-    // Set headers only if it's an HTTP response
     if (outputStream.setHeader) {
       const filename = `${config.filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`;
       outputStream.setHeader('Content-Type', 'text/csv');
       outputStream.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     }
 
-    // Stream from DB directly to response
-    const cursor = config.model.find(match).sort(config.defaultSort).cursor();
+    // Scoped Mongoose cursor obtained cleanly via domain model querying through repo middleware
+    const cursor = config.repository.model.find({ ...match, organization: orgId }).sort(config.defaultSort).cursor();
     
     const formatTransform = new Transform({
       objectMode: true,
       transform(chunk, encoding, callback) {
-        // Must convert Mongoose document to plain object
         const plain = chunk.toObject ? chunk.toObject() : chunk;
         callback(null, config.formatRecord(plain));
       }
@@ -109,11 +112,10 @@ class ReportService {
 
     cursor.pipe(formatTransform).pipe(asyncParser.processor).pipe(outputStream);
     
-    // Wait for the cursor to finish so we can log
     return new Promise((resolve, reject) => {
       cursor.on('close', async () => {
         try {
-          await this.logExport(type, 'CSV', user);
+          await this.logExport(orgId, type, 'CSV', user);
           resolve();
         } catch (err) {
           reject(err);
@@ -123,7 +125,8 @@ class ReportService {
     });
   }
 
-  async exportExcel(type, filters, outputStream, user) {
+  async exportExcel(sessionOrOrgId, type, filters, outputStream, user) {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const config = REPORT_TYPES[type];
     if (!config) throw new Error(`Report type '${type}' not found.`);
 
@@ -152,9 +155,7 @@ class ReportService {
       width: c.width
     }));
 
-    // Add summary info at the top if needed (optional enhancement)
-    // For simplicity, we just dump the data rows
-    const cursor = config.model.find(match).sort(config.defaultSort).cursor();
+    const cursor = config.repository.model.find({ ...match, organization: orgId }).sort(config.defaultSort).cursor();
 
     for await (const doc of cursor) {
       const plain = doc.toObject ? doc.toObject() : doc;
@@ -163,10 +164,11 @@ class ReportService {
     }
 
     await workbook.commit();
-    await this.logExport(type, 'EXCEL', user);
+    await this.logExport(orgId, type, 'EXCEL', user);
   }
 
-  async exportPDF(type, filters, outputStream, user) {
+  async exportPDF(sessionOrOrgId, type, filters, outputStream, user) {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const config = REPORT_TYPES[type];
     if (!config) throw new Error(`Report type '${type}' not found.`);
 
@@ -189,24 +191,20 @@ class ReportService {
     const doc = new PDFDocument({ margin: 30, size: 'A4', layout: 'landscape' });
     doc.pipe(outputStream);
 
-    // Header
     doc.fontSize(20).text(config.name, { align: 'center' });
     doc.moveDown();
 
-    // Summary
-    const summary = await config.getSummary(match);
+    const summary = await config.getSummary(orgId, match);
     doc.fontSize(12);
     Object.entries(summary).forEach(([k, v]) => {
       doc.text(`${k}: ${v}`);
     });
     doc.moveDown();
 
-    // Table Headers (simplified)
     const startX = 30;
     let currentY = doc.y;
     
-    // Compute simple column widths for PDF
-    const totalWidth = 780; // A4 landscape width minus margins
+    const totalWidth = 780;
     const colWidth = totalWidth / columns.length;
 
     doc.fontSize(10).font('Helvetica-Bold');
@@ -220,18 +218,16 @@ class ReportService {
 
     doc.font('Helvetica');
 
-    const cursor = config.model.find(match).sort(config.defaultSort).cursor();
+    const cursor = config.repository.model.find({ ...match, organization: orgId }).sort(config.defaultSort).cursor();
 
     for await (const record of cursor) {
       const plain = record.toObject ? record.toObject() : record;
       const formatted = config.formatRecord(plain);
       
-      // Check pagination
       if (currentY > 550) {
         doc.addPage();
         currentY = 30;
         
-        // Redraw headers
         doc.fontSize(10).font('Helvetica-Bold');
         columns.forEach((col, i) => {
           doc.text(col.header, startX + (i * colWidth), currentY, { width: colWidth });
@@ -250,7 +246,7 @@ class ReportService {
     }
 
     doc.end();
-    await this.logExport(type, 'PDF', user);
+    await this.logExport(orgId, type, 'PDF', user);
   }
 }
 

@@ -25,10 +25,15 @@ const automationActionSchema = new mongoose.Schema({
 }, { _id: false });
 
 const automationRuleSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   name: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   description: {
@@ -39,11 +44,10 @@ const automationRuleSchema = new mongoose.Schema({
     type: String,
     required: true,
     index: true
-    // e.g., 'WORKFLOW_STARTED', 'SLA_WARNING', 'SLA_BREACHED', 'PR_CREATED'
   },
   priority: {
     type: Number,
-    default: 100 // Lower number = higher priority (executes first)
+    default: 100
   },
   stopAfterMatch: {
     type: Boolean,
@@ -52,7 +56,6 @@ const automationRuleSchema = new mongoose.Schema({
   conditions: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
-    // e.g., { departmentId: '...', minAmount: 1000, priority: 'HIGH' }
   },
   actions: [automationActionSchema],
   version: {
@@ -60,7 +63,7 @@ const automationRuleSchema = new mongoose.Schema({
     default: 1
   },
   schedule: {
-    type: String, // Cron expression
+    type: String,
     trim: true
   },
   nextRunAt: {
@@ -80,8 +83,12 @@ const automationRuleSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: false
+  optimisticConcurrency: true
 });
+
+automationRuleSchema.index({ organization: 1, name: 1 }, { unique: true });
+automationRuleSchema.index({ organization: 1, isActive: 1 });
+automationRuleSchema.index({ organization: 1, trigger: 1 });
 
 const AutomationRule = mongoose.model('AutomationRule', automationRuleSchema);
 

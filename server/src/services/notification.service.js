@@ -1,98 +1,82 @@
-const Notification = require("../models/Notification");
-const { dispatchNotification } = require("./notificationDispatcher");
+const NotificationRepository = require("../repositories/NotificationRepository");
+const { getIo } = require("../socket/socketServer");
 
 /**
- * Generic factory method to create a notification
- * @param {Object} payload 
- * @param {string} payload.recipient - ObjectId of the recipient
- * @param {string} [payload.sender] - ObjectId of the sender
- * @param {string} payload.type - Type of notification (e.g., 'PR_APPROVED')
- * @param {string} payload.title - Short title
- * @param {string} payload.message - Detailed message
- * @param {string} [payload.entityType] - Type of related entity (e.g., 'PurchaseRequest')
- * @param {string} [payload.entityId] - ObjectId of related entity
- * @param {string} [payload.priority] - Priority (LOW, MEDIUM, HIGH, CRITICAL)
- * @param {string} [payload.actionUrl] - Direct URL to the entity in frontend
- * @param {string} [payload.icon] - Icon name
- * @param {Object} [payload.metadata] - Extra flexible data
- * @param {Date} [payload.expiresAt] - Expiration date
- * @returns {Promise<Object>} Created notification
+ * Create a new notification
  */
-const createNotification = async (payload) => {
-  const notification = await Notification.create(payload);
-  
-  // Asynchronously dispatch to all channels (Socket, Email, etc.)
-  dispatchNotification(notification);
+const createNotification = async (sessionOrOrgId, notificationData) => {
+  const notification = await NotificationRepository.create(sessionOrOrgId, notificationData);
+
+  try {
+    const io = getIo();
+    if (io) {
+      io.to(notification.recipient.toString()).emit("newNotification", notification);
+    }
+  } catch (error) {
+    console.warn("[LOG] Real-time notification not sent:", error.message);
+  }
 
   return notification;
 };
 
 /**
  * Get notifications for a specific user with pagination and filtering
- * @param {string} userId 
- * @param {Object} filters 
- * @param {Object} options 
- * @returns {Promise<Object>} { notifications, totalPages, totalResults, page, limit, unreadCount }
  */
-const getUserNotifications = async (userId, filters = {}, options = { page: 1, limit: 20 }) => {
+const getUserNotifications = async (sessionOrOrgId, userId, filters = {}, options = { page: 1, limit: 20 }) => {
   const query = { recipient: userId, ...filters };
-  
-  const skip = (options.page - 1) * options.limit;
-  
+  const page = parseInt(options.page, 10) || 1;
+  const limit = parseInt(options.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
   const [notifications, totalResults, unreadCount] = await Promise.all([
-    Notification.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(options.limit)
-      .populate("sender", "firstName lastName email")
-      .lean(),
-    Notification.countDocuments(query),
-    Notification.countDocuments({ recipient: userId, isRead: false })
+    NotificationRepository.findMany(sessionOrOrgId, query, null, {
+      sort: { createdAt: -1 },
+      skip,
+      limit,
+      populate: [{ path: "sender", select: "firstName lastName email" }]
+    }),
+    NotificationRepository.count(sessionOrOrgId, query),
+    NotificationRepository.count(sessionOrOrgId, { recipient: userId, isRead: false })
   ]);
-  
-  const totalPages = Math.ceil(totalResults / options.limit);
-  
+
+  const totalPages = Math.ceil(totalResults / limit);
+
   return {
     notifications,
     totalPages,
     totalResults,
-    page: options.page,
-    limit: options.limit,
+    page,
+    limit,
     unreadCount
   };
 };
 
 /**
  * Get only the unread count for a user
- * @param {string} userId 
- * @returns {Promise<number>}
  */
-const getUnreadCount = async (userId) => {
-  return await Notification.countDocuments({ recipient: userId, isRead: false });
+const getUnreadCount = async (sessionOrOrgId, userId) => {
+  return await NotificationRepository.count(sessionOrOrgId, { recipient: userId, isRead: false });
 };
 
 /**
  * Mark a single notification as read
- * @param {string} notificationId 
- * @param {string} userId 
- * @returns {Promise<Object>}
  */
-const markAsRead = async (notificationId, userId) => {
-  const notification = await Notification.findOneAndUpdate(
-    { _id: notificationId, recipient: userId },
+const markAsRead = async (sessionOrOrgId, notificationId, userId) => {
+  return await NotificationRepository.update(
+    sessionOrOrgId,
+    notificationId,
     { isRead: true },
-    { new: true, runValidators: true }
+    { new: true }
   );
-  return notification;
 };
 
 /**
  * Mark all notifications as read for a user
- * @param {string} userId 
- * @returns {Promise<number>} number of modified documents
  */
-const markAllAsRead = async (userId) => {
-  const result = await Notification.updateMany(
+const markAllAsRead = async (sessionOrOrgId, userId) => {
+  const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+  const result = await NotificationRepository.tenantRepo.updateMany(
+    orgId,
     { recipient: userId, isRead: false },
     { isRead: true }
   );
@@ -101,22 +85,17 @@ const markAllAsRead = async (userId) => {
 
 /**
  * Delete a single notification
- * @param {string} notificationId 
- * @param {string} userId 
- * @returns {Promise<Object>}
  */
-const deleteNotification = async (notificationId, userId) => {
-  const notification = await Notification.findOneAndDelete({ _id: notificationId, recipient: userId });
-  return notification;
+const deleteNotification = async (sessionOrOrgId, notificationId, userId) => {
+  return await NotificationRepository.delete(sessionOrOrgId, notificationId);
 };
 
 /**
  * Clear all read notifications for a user
- * @param {string} userId 
- * @returns {Promise<number>} number of deleted documents
  */
-const clearReadNotifications = async (userId) => {
-  const result = await Notification.deleteMany({ recipient: userId, isRead: true });
+const clearReadNotifications = async (sessionOrOrgId, userId) => {
+  const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+  const result = await NotificationRepository.tenantRepo.deleteMany(orgId, { recipient: userId, isRead: true });
   return result.deletedCount;
 };
 

@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const vendorSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: true,
+      index: true
+    },
     vendorCode: {
       type: String,
       required: true,
@@ -83,9 +89,14 @@ const vendorSchema = new mongoose.Schema(
   }
 );
 
-// Indexes for performance optimization
-vendorSchema.index({ isDeleted: 1, status: 1 });
+// Compound indexes for multi-tenant performance
+vendorSchema.index({ organization: 1, isDeleted: 1 });
+vendorSchema.index({ organization: 1, vendorCode: 1 }, { unique: true });
+
+vendorSchema.index({ vendorCode: 1 }, { unique: true });
+vendorSchema.index({ "contactInfo.email": 1 });
 vendorSchema.index({ vendorCategory: 1 });
+vendorSchema.index({ status: 1 });
 
 const Vendor = mongoose.model("Vendor", vendorSchema);
 

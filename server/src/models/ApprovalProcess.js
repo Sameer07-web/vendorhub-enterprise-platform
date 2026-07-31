@@ -33,6 +33,12 @@ const approvalHistorySchema = new mongoose.Schema({
 }, { _id: false });
 
 const approvalProcessSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   entityId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -84,6 +90,9 @@ const approvalProcessSchema = new mongoose.Schema({
   timestamps: true,
   versionKey: false
 });
+
+approvalProcessSchema.index({ organization: 1, status: 1 });
+approvalProcessSchema.index({ organization: 1, entityId: 1 });
 
 const ApprovalProcess = mongoose.model('ApprovalProcess', approvalProcessSchema);
 

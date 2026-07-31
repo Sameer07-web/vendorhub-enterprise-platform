@@ -1,10 +1,13 @@
-const AuditLog = require("../models/AuditLog");
+const AuditLogRepository = require("../repositories/AuditLogRepository");
 
 /**
  * Log an enterprise action/event in the database for compliance and auditing.
  */
 const logEvent = async ({
+  organizationId,
   userId,
+  correlationId = null,
+  requestId = null,
   action,
   entityType,
   entityId,
@@ -14,8 +17,14 @@ const logEvent = async ({
   userAgent = null
 }) => {
   try {
-    await AuditLog.create({
+    if (!organizationId) {
+      console.warn("Audit log skipped: organizationId missing");
+      return;
+    }
+    await AuditLogRepository.create(organizationId, {
       user: userId,
+      correlationId,
+      requestId,
       action,
       entityType,
       entityId,
@@ -30,9 +39,9 @@ const logEvent = async ({
 };
 
 /**
- * Fetch logs for audit views (e.g. for Admin/Manager dashboard)
+ * Fetch logs for audit views
  */
-const getAuditLogs = async (filter = {}, options = {}) => {
+const getAuditLogs = async (sessionOrOrgId, filter = {}, options = {}) => {
   const page = parseInt(options.page, 10) || 1;
   const limit = parseInt(options.limit, 10) || 20;
   const skip = (page - 1) * limit;
@@ -40,13 +49,13 @@ const getAuditLogs = async (filter = {}, options = {}) => {
   const query = { ...filter };
 
   const [logs, total] = await Promise.all([
-    AuditLog.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("user", "fullName email role")
-      .lean(),
-    AuditLog.countDocuments(query)
+    AuditLogRepository.findMany(sessionOrOrgId, query, null, {
+      sort: { createdAt: -1 },
+      skip,
+      limit,
+      populate: [{ path: "user", select: "fullName email role" }]
+    }),
+    AuditLogRepository.count(sessionOrOrgId, query)
   ]);
 
   return {

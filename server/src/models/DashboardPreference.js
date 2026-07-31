@@ -1,11 +1,16 @@
 const mongoose = require('mongoose');
 
 const dashboardPreferenceSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    unique: true
+    required: true
   },
   theme: {
     type: String,
@@ -43,6 +48,8 @@ const dashboardPreferenceSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+dashboardPreferenceSchema.index({ organization: 1, user: 1 }, { unique: true });
 
 const DashboardPreference = mongoose.model('DashboardPreference', dashboardPreferenceSchema);
 

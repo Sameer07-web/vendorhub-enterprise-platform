@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const automationExecutionSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   ruleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AutomationRule',
@@ -28,8 +34,11 @@ const automationExecutionSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  versionKey: false
+  optimisticConcurrency: true
 });
+
+automationExecutionSchema.index({ organization: 1, status: 1 });
+automationExecutionSchema.index({ organization: 1, createdAt: -1 });
 
 const AutomationExecution = mongoose.model('AutomationExecution', automationExecutionSchema);
 

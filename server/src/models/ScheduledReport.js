@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const scheduledReportSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -41,8 +47,13 @@ const scheduledReportSchema = new mongoose.Schema({
     default: null
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  optimisticConcurrency: true
 });
+
+scheduledReportSchema.index({ organization: 1, user: 1 });
+scheduledReportSchema.index({ organization: 1, isActive: 1 });
+scheduledReportSchema.index({ organization: 1, nextRunAt: 1 });
 
 const ScheduledReport = mongoose.model('ScheduledReport', scheduledReportSchema);
 

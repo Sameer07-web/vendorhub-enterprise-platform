@@ -64,27 +64,42 @@ const authLimiter = rateLimit({
   },
 });
 
+const { protect } = require("./middleware/auth.middleware");
+const { tenantMiddleware } = require("./middleware/tenant.middleware");
+
 // ── API Routes ──────────────────────────────────────────────────────
 app.use("/api/v1/auth", authLimiter, authRoutes);
-app.use("/api/v1/vendors", vendorRoutes);
-app.use("/api/v1/purchase-requests", purchaseRequestRoutes);
-app.use("/api/v1/rfqs", rfqRoutes);
-app.use("/api/v1/quotations", quotationRoutes);
-app.use("/api/v1/dashboard", dashboardRoutes);
-app.use("/api/v1/search", searchRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/notifications", notificationRoutes);
-app.use("/api/v1/analytics", analyticsRoutes);
-app.use("/api/v1/reports", reportRoutes);
-app.use("/api/v1/saved-reports", savedReportRoutes);
-app.use("/api/v1/dashboard/preferences", dashboardPreferenceRoutes);
-app.use("/api/v1/queues", queueRoutes);
-app.use("/api/v1/workflows", workflowRoutes);
-app.use("/api/v1/automation", automationRoutes);
-app.use("/api/v1/workflow-rules", workflowRuleRoutes);
-app.use("/api/v1/ai", aiRoutes);
-app.use("/api/v1/ai/insights", insightRoutes);
-app.use("/api/v1/ai/extract", documentRoutes);
+
+const organizationRoutes = require("./routes/organization.routes");
+const roleRoutes = require("./routes/role.routes");
+const policyRoutes = require("./routes/policy.routes");
+
+// Public invitation acceptance bypasses auth protection
+app.post("/api/v1/organizations/invitations/accept", organizationRoutes);
+
+// Apply auth protection and tenant resolution globally for downstream routes
+app.use("/api/v1/organizations/roles", protect, tenantMiddleware, roleRoutes);
+app.use("/api/v1/organizations/policies", protect, tenantMiddleware, policyRoutes);
+app.use("/api/v1/organizations", protect, tenantMiddleware, organizationRoutes);
+app.use("/api/v1/vendors", protect, tenantMiddleware, vendorRoutes);
+app.use("/api/v1/purchase-requests", protect, tenantMiddleware, purchaseRequestRoutes);
+app.use("/api/v1/rfqs", protect, tenantMiddleware, rfqRoutes);
+app.use("/api/v1/quotations", protect, tenantMiddleware, quotationRoutes);
+app.use("/api/v1/dashboard", protect, tenantMiddleware, dashboardRoutes);
+app.use("/api/v1/search", protect, tenantMiddleware, searchRoutes);
+app.use("/api/v1/users", protect, tenantMiddleware, userRoutes);
+app.use("/api/v1/notifications", protect, tenantMiddleware, notificationRoutes);
+app.use("/api/v1/analytics", protect, tenantMiddleware, analyticsRoutes);
+app.use("/api/v1/reports", protect, tenantMiddleware, reportRoutes);
+app.use("/api/v1/saved-reports", protect, tenantMiddleware, savedReportRoutes);
+app.use("/api/v1/dashboard/preferences", protect, tenantMiddleware, dashboardPreferenceRoutes);
+app.use("/api/v1/queues", protect, tenantMiddleware, queueRoutes);
+app.use("/api/v1/workflows", protect, tenantMiddleware, workflowRoutes);
+app.use("/api/v1/automation", protect, tenantMiddleware, automationRoutes);
+app.use("/api/v1/workflow-rules", protect, tenantMiddleware, workflowRuleRoutes);
+app.use("/api/v1/ai", protect, tenantMiddleware, aiRoutes);
+app.use("/api/v1/ai/insights", protect, tenantMiddleware, insightRoutes);
+app.use("/api/v1/ai/extract", protect, tenantMiddleware, documentRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────
 app.use("/health", healthRoutes);

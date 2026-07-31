@@ -1,6 +1,7 @@
-const ApprovalProcess = require('../../models/ApprovalProcess');
-const AutomationExecution = require('../../models/AutomationExecution');
-const PurchaseRequest = require('../../models/PurchaseRequest');
+const ApprovalProcessRepository = require('../../repositories/ApprovalProcessRepository');
+const AutomationExecution = require('../../models/AutomationExecution'); // Read-only analytics tracking, isolated manually
+const PurchaseRequestRepository = require('../../repositories/PurchaseRequestRepository');
+const TenantAggregationBuilder = require('../../utils/TenantAggregationBuilder');
 
 class WorkflowAnalyticsService {
   /**
@@ -18,47 +19,46 @@ class WorkflowAnalyticsService {
     return { [field]: { $gte: now } };
   }
 
-  async getSlaMetrics(range = '30d') {
+  _getOrgId(sessionOrOrgId) {
+    if (!sessionOrOrgId) throw new Error("WorkflowAnalyticsService: Tenant context is required.");
+    return sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+  }
+
+  async getSlaMetrics(sessionOrOrgId, range = '30d') {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const dateMatch = this.getDateMatch('createdAt', range);
     
-    const stats = await ApprovalProcess.aggregate([
-      { $match: { ...dateMatch } },
-      { $unwind: "$history" },
-      {
-        $group: {
-          _id: null,
-          totalActions: { $sum: 1 },
-          escalated: { $sum: { $cond: [{ $eq: ["$history.action", "ESCALATED"] }, 1, 0] } },
-          breached: { $sum: { $cond: [{ $eq: ["$history.action", "SLA_BREACHED"] }, 1, 0] } },
-          approved: { $sum: { $cond: [{ $eq: ["$history.action", "APPROVED"] }, 1, 0] } },
-          rejected: { $sum: { $cond: [{ $eq: ["$history.action", "REJECTED"] }, 1, 0] } },
-          autoApproved: { 
-            $sum: { 
-              $cond: [
-                { 
-                  $and: [
-                    { $eq: ["$history.action", "APPROVED"] }, 
-                    // System actor check might be tricky in pure aggregation if we only have ObjectId.
-                    // Assuming SYSTEM user is often the cause of "Auto-Approved based on automation rule"
-                    { $regexMatch: { input: { $ifNull: ["$history.comments", ""] }, regex: /Auto-Approved/i } }
-                  ]
-                }, 1, 0
-              ] 
-            } 
+    const pipeline = new TenantAggregationBuilder(orgId)
+      .match({ ...dateMatch })
+      .unwind("$history")
+      .group({
+        _id: null,
+        totalActions: { $sum: 1 },
+        escalated: { $sum: { $cond: [{ $eq: ["$history.action", "ESCALATED"] }, 1, 0] } },
+        breached: { $sum: { $cond: [{ $eq: ["$history.action", "SLA_BREACHED"] }, 1, 0] } },
+        approved: { $sum: { $cond: [{ $eq: ["$history.action", "APPROVED"] }, 1, 0] } },
+        rejected: { $sum: { $cond: [{ $eq: ["$history.action", "REJECTED"] }, 1, 0] } },
+        autoApproved: { 
+          $sum: { 
+            $cond: [
+              { 
+                $and: [
+                  { $eq: ["$history.action", "APPROVED"] }, 
+                  { $regexMatch: { input: { $ifNull: ["$history.comments", ""] }, regex: /Auto-Approved/i } }
+                ]
+              }, 1, 0
+            ] 
           }
         }
-      }
-    ]);
+      })
+      .build();
 
+    const stats = await ApprovalProcessRepository.tenantRepo.model.aggregate(pipeline);
     const result = stats[0] || { totalActions: 0, escalated: 0, breached: 0, approved: 0, rejected: 0, autoApproved: 0 };
     
-    // SLA Adherence % = (Total Actions - Breached - Escalated) / Total Actions
-    // Wait, better measure is breached events / total ApprovalProcesses?
-    const totalProcesses = await ApprovalProcess.countDocuments({ ...dateMatch });
-    
-    // Total processes that have at least one SLA_BREACHED event
-    const breachedProcesses = await ApprovalProcess.countDocuments({ ...dateMatch, 'history.action': 'SLA_BREACHED' });
-    const escalatedProcesses = await ApprovalProcess.countDocuments({ ...dateMatch, 'history.action': 'ESCALATED' });
+    const totalProcesses = await ApprovalProcessRepository.count(orgId, { ...dateMatch });
+    const breachedProcesses = await ApprovalProcessRepository.count(orgId, { ...dateMatch, 'history.action': 'SLA_BREACHED' });
+    const escalatedProcesses = await ApprovalProcessRepository.count(orgId, { ...dateMatch, 'history.action': 'ESCALATED' });
 
     const slaAdherence = totalProcesses > 0 ? ((totalProcesses - breachedProcesses) / totalProcesses) * 100 : 100;
 
@@ -71,80 +71,75 @@ class WorkflowAnalyticsService {
     };
   }
 
-  async getDepartmentScorecard(range = '30d') {
+  async getDepartmentScorecard(sessionOrOrgId, range = '30d') {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const dateMatch = this.getDateMatch('createdAt', range);
 
-    // We join ApprovalProcess -> PurchaseRequest to get department
-    const scorecard = await ApprovalProcess.aggregate([
-      { $match: { entityType: 'PurchaseRequest', ...dateMatch } },
-      { $lookup: { from: 'purchaserequests', localField: 'entityId', foreignField: '_id', as: 'pr' } },
-      { $unwind: "$pr" },
-      { $lookup: { from: 'departments', localField: 'pr.departmentId', foreignField: '_id', as: 'dept' } },
-      { $unwind: { path: "$dept", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          departmentName: { $ifNull: ["$dept.name", "Unknown"] },
-          status: 1,
-          durationMs: {
-            $cond: [
-              { $and: [{ $ne: ["$completedAt", null] }, { $ne: ["$createdAt", null] }] },
-              { $dateDiff: { startDate: "$createdAt", endDate: "$completedAt", unit: "millisecond" } },
-              null
-            ]
-          },
-          hasBreach: { $in: ["SLA_BREACHED", "$history.action"] },
-          hasEscalation: { $in: ["ESCALATED", "$history.action"] }
+    const pipeline = new TenantAggregationBuilder(orgId)
+      .match({ entityType: 'PurchaseRequest', ...dateMatch })
+      .lookup({ from: 'purchaserequests', localField: 'entityId', foreignField: '_id', as: 'pr' })
+      .unwind("$pr")
+      .lookup({ from: 'departments', localField: 'pr.departmentId', foreignField: '_id', as: 'dept' })
+      .unwind({ path: "$dept", preserveNullAndEmptyArrays: true })
+      .project({
+        departmentName: { $ifNull: ["$dept.name", "Unknown"] },
+        status: 1,
+        durationMs: {
+          $cond: [
+            { $and: [{ $ne: ["$completedAt", null] }, { $ne: ["$createdAt", null] }] },
+            { $dateDiff: { startDate: "$createdAt", endDate: "$completedAt", unit: "millisecond" } },
+            null
+          ]
+        },
+        hasBreach: { $in: ["SLA_BREACHED", "$history.action"] },
+        hasEscalation: { $in: ["ESCALATED", "$history.action"] }
+      })
+      .group({
+        _id: "$departmentName",
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: [{ $in: ["$status", ["APPROVED", "REJECTED"]] }, 1, 0] } },
+        avgDurationMs: { $avg: "$durationMs" },
+        breaches: { $sum: { $cond: ["$hasBreach", 1, 0] } },
+        escalations: { $sum: { $cond: ["$hasEscalation", 1, 0] } }
+      })
+      .project({
+        departmentName: "$_id",
+        total: 1,
+        completed: 1,
+        avgDurationHours: { $divide: ["$avgDurationMs", 1000 * 60 * 60] },
+        breaches: 1,
+        escalations: 1,
+        slaAdherence: {
+          $cond: [
+            { $gt: ["$total", 0] },
+            { $multiply: [{ $divide: [{ $subtract: ["$total", "$breaches"] }, "$total"] }, 100] },
+            100
+          ]
         }
-      },
-      {
-        $group: {
-          _id: "$departmentName",
-          total: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $in: ["$status", ["APPROVED", "REJECTED"]] }, 1, 0] } },
-          avgDurationMs: { $avg: "$durationMs" },
-          breaches: { $sum: { $cond: ["$hasBreach", 1, 0] } },
-          escalations: { $sum: { $cond: ["$hasEscalation", 1, 0] } }
-        }
-      },
-      {
-        $project: {
-          departmentName: "$_id",
-          total: 1,
-          completed: 1,
-          avgDurationHours: { $divide: ["$avgDurationMs", 1000 * 60 * 60] },
-          breaches: 1,
-          escalations: 1,
-          slaAdherence: {
-            $cond: [
-              { $gt: ["$total", 0] },
-              { $multiply: [{ $divide: [{ $subtract: ["$total", "$breaches"] }, "$total"] }, 100] },
-              100
-            ]
-          }
-        }
-      },
-      { $sort: { slaAdherence: -1 } }
-    ]);
+      })
+      .sort({ slaAdherence: -1 })
+      .build();
 
+    const scorecard = await ApprovalProcessRepository.tenantRepo.model.aggregate(pipeline);
     return scorecard;
   }
 
-  async getApprovalFunnel(range = '30d') {
+  async getApprovalFunnel(sessionOrOrgId, range = '30d') {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const dateMatch = this.getDateMatch('createdAt', range);
     
-    const stats = await ApprovalProcess.aggregate([
-      { $match: { ...dateMatch } },
-      {
-        $group: {
-          _id: null,
-          submitted: { $sum: 1 }, // All created
-          pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
-          approved: { $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] } },
-          rejected: { $sum: { $cond: [{ $eq: ["$status", "REJECTED"] }, 1, 0] } }
-        }
-      }
-    ]);
+    const pipeline = new TenantAggregationBuilder(orgId)
+      .match({ ...dateMatch })
+      .group({
+        _id: null,
+        submitted: { $sum: 1 },
+        pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
+        approved: { $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] } },
+        rejected: { $sum: { $cond: [{ $eq: ["$status", "REJECTED"] }, 1, 0] } }
+      })
+      .build();
 
+    const stats = await ApprovalProcessRepository.tenantRepo.model.aggregate(pipeline);
     const result = stats[0] || { submitted: 0, pending: 0, approved: 0, rejected: 0 };
     return {
       submitted: result.submitted,
@@ -155,14 +150,15 @@ class WorkflowAnalyticsService {
     };
   }
 
-  async getAutomationMetrics(range = '30d') {
+  async getAutomationMetrics(sessionOrOrgId, range = '30d') {
+    const orgId = this._getOrgId(sessionOrOrgId);
     const dateMatch = this.getDateMatch('createdAt', range);
 
     const stats = await AutomationExecution.aggregate([
-      { $match: { ...dateMatch } },
+      { $match: { organization: orgId, ...dateMatch } },
       {
         $group: {
-          _id: "$status", // SUCCESS or FAILED
+          _id: "$status",
           count: { $sum: 1 },
           avgDurationMs: { $avg: "$durationMs" }
         }
@@ -183,9 +179,8 @@ class WorkflowAnalyticsService {
     const avgExecutionMs = total > 0 ? (totalDuration / total) : 0;
     const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : 100;
 
-    // Top rules
     const topRules = await AutomationExecution.aggregate([
-      { $match: { ...dateMatch } },
+      { $match: { organization: orgId, ...dateMatch } },
       { $group: { _id: "$ruleId", executions: { $sum: 1 }, failures: { $sum: { $cond: [{ $eq: ["$status", "FAILED"] }, 1, 0] } } } },
       { $sort: { executions: -1 } },
       { $limit: 5 },
@@ -204,15 +199,16 @@ class WorkflowAnalyticsService {
     };
   }
   
-  async getOverdueApprovals() {
-    const overdue = await ApprovalProcess.find({
+  async getOverdueApprovals(sessionOrOrgId) {
+    const orgId = this._getOrgId(sessionOrOrgId);
+    const overdue = await ApprovalProcessRepository.findMany(orgId, {
       status: 'PENDING',
       slaDeadline: { $lt: new Date() }
-    })
-    .populate('entityId')
-    .populate('pendingApprovers', 'fullName email')
-    .sort({ slaDeadline: 1 })
-    .limit(50);
+    }, null, {
+      sort: { slaDeadline: 1 },
+      limit: 50,
+      populate: ['entityId', { path: 'pendingApprovers', select: 'fullName email' }]
+    });
     
     return overdue;
   }

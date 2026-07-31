@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const approvalDelegationSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   delegatorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -31,6 +37,8 @@ const approvalDelegationSchema = new mongoose.Schema({
   timestamps: true,
   versionKey: false
 });
+
+approvalDelegationSchema.index({ organization: 1, delegatorId: 1, isActive: 1 });
 
 const ApprovalDelegation = mongoose.model('ApprovalDelegation', approvalDelegationSchema);
 

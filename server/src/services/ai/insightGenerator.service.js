@@ -1,5 +1,5 @@
 const geminiProvider = require('./geminiProvider');
-const AIInsight = require('../../models/AIInsight');
+const AIInsightRepository = require('../../repositories/AIInsightRepository');
 const workflowAnalyticsService = require('../analytics/workflowAnalytics.service');
 const analyticsService = require('../analytics.service');
 
@@ -21,15 +21,14 @@ Rules:
 - Return ONLY a JSON array of insight objects. No markdown formatting, no backticks.`;
 
 class InsightGeneratorService {
-  async generateInsights() {
+  async generateInsights(sessionOrOrgId) {
     console.log('[InsightGenerator] Starting proactive insight generation...');
     try {
-      // 1. Gather Context
-      const slaMetrics = await workflowAnalyticsService.getSlaMetrics('30d');
-      const departmentScorecard = await workflowAnalyticsService.getDepartmentScorecard('30d');
-      const funnel = await workflowAnalyticsService.getApprovalFunnel('30d');
-      const automation = await workflowAnalyticsService.getAutomationMetrics('30d');
-      const kpis = await analyticsService.getDashboardKPIs();
+      const slaMetrics = await workflowAnalyticsService.getSlaMetrics(sessionOrOrgId, '30d');
+      const departmentScorecard = await workflowAnalyticsService.getDepartmentScorecard(sessionOrOrgId, '30d');
+      const funnel = await workflowAnalyticsService.getApprovalFunnel(sessionOrOrgId, '30d');
+      const automation = await workflowAnalyticsService.getAutomationMetrics(sessionOrOrgId, '30d');
+      const kpis = await analyticsService.getDashboardKPIs(sessionOrOrgId);
 
       const payload = {
         slaMetrics,
@@ -41,45 +40,38 @@ class InsightGeneratorService {
 
       const prompt = `Analyze the following operational data and generate insights:\n${JSON.stringify(payload, null, 2)}`;
 
-      // 2. Query LLM
       const response = await geminiProvider.generateContent(
         prompt,
-        [], // no history
-        [], // no tools needed for generation
+        [],
+        [],
         INSIGHT_SYSTEM_PROMPT,
         null,
-        { responseMimeType: "application/json" } // Force JSON output if supported
+        { responseMimeType: "application/json" }
       );
 
       let rawText = response.text;
-      // Strip markdown block if model ignored the mimeType directive
       rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
       const insights = JSON.parse(rawText);
-      
-      // 3. Process and Persist Insights
       const createdInsights = [];
       
       for (const item of insights) {
-        // Simple deduplication strategy based on type and affectedModule for unresolved insights
-        const existing = await AIInsight.findOne({
+        const existing = await AIInsightRepository.findOne(sessionOrOrgId, {
           type: item.type,
           affectedModule: item.affectedModule,
           status: { $in: ['NEW', 'ACKNOWLEDGED'] }
         });
 
         if (existing) {
-          // Update occurrences and refresh generatedAt
           existing.occurrences += 1;
           existing.generatedAt = new Date();
           existing.confidenceScore = item.confidenceScore;
-          existing.description = item.description; // Update with latest context
-          existing.referenceData = payload; // Keep latest evidence
+          existing.description = item.description;
+          existing.referenceData = payload;
           await existing.save();
           createdInsights.push(existing);
         } else {
-          // Create new
-          const newInsight = await AIInsight.create({
+          const newInsight = await AIInsightRepository.create(sessionOrOrgId, {
             title: item.title,
             description: item.description,
             type: item.type,

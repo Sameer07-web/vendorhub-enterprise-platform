@@ -6,6 +6,9 @@ const mongoose = require("mongoose");
 const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const app = require("../../src/app");
+const Organization = require("../../src/models/Organization");
+const OrganizationMember = require("../../src/models/OrganizationMember");
+const User = require("../../src/models/User");
 
 let mongoServer;
 let adminToken = "";
@@ -20,6 +23,18 @@ beforeAll(async () => {
   const uri = mongoServer.getUri();
   
   await mongoose.connect(uri);
+
+  // Create organization
+  const org = await Organization.create({
+    name: "Procurement Test Org",
+    slug: "procurement-test-org",
+    status: "ACTIVE",
+    tenantVersion: 1
+  });
+
+  // Seed default roles for organization
+  const dynamicRoleService = require("../../src/services/dynamicRole.service");
+  await dynamicRoleService.seedDefaultRoles(org._id);
 
   // Register Admin
   const adminRes = await request(app).post("/api/v1/auth/register").send({
@@ -37,20 +52,46 @@ beforeAll(async () => {
     department: "Sales"
   });
 
-  // Since registration defaults to Employee, we need to directly mock database to set Admin/Manager roles for tests
-  await mongoose.connection.collection("users").updateOne(
+  // Link users to organization and set correct roles
+  await User.updateOne(
     { email: "admin@test.com" },
-    { $set: { role: "Admin" } }
+    { $set: { role: "Admin", organization: org._id } }
   );
 
-  // Authenticate Admin
+  await User.updateOne(
+    { email: "emp@test.com" },
+    { $set: { role: "Employee", organization: org._id } }
+  );
+
+  // Fetch users to get their IDs
+  const adminUser = await User.findOne({ email: "admin@test.com" });
+  const employeeUser = await User.findOne({ email: "emp@test.com" });
+
+  // Create organization memberships
+  await OrganizationMember.create({
+    organization: org._id,
+    user: adminUser._id,
+    role: "Admin",
+    status: "ACTIVE",
+    joinedAt: new Date()
+  });
+
+  await OrganizationMember.create({
+    organization: org._id,
+    user: employeeUser._id,
+    role: "Viewer", // Fallback viewer role or generic member
+    status: "ACTIVE",
+    joinedAt: new Date()
+  });
+
+  // Authenticate Admin to get token containing organizationId
   const loginRes = await request(app).post("/api/v1/auth/login").send({
     email: "admin@test.com",
     password: "Password123!"
   });
   adminToken = loginRes.body.data.token;
 
-  // Authenticate Employee
+  // Authenticate Employee to get token containing organizationId
   const empLoginRes = await request(app).post("/api/v1/auth/login").send({
     email: "emp@test.com",
     password: "Password123!"

@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 
 const analyticsSnapshotSchema = new mongoose.Schema({
+  organization: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: true,
+    index: true
+  },
   snapshotType: {
     type: String,
     required: true,
@@ -31,6 +37,7 @@ const analyticsSnapshotSchema = new mongoose.Schema({
 });
 
 // Create compound index for querying the latest snapshot of a specific type and period
+analyticsSnapshotSchema.index({ organization: 1, snapshotType: 1, period: 1, generatedAt: -1 });
 analyticsSnapshotSchema.index({ snapshotType: 1, period: 1, generatedAt: -1 });
 
 // Optional: Add TTL index to automatically delete expired snapshots

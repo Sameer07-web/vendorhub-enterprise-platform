@@ -3,7 +3,7 @@ const ApiResponse = require('../utils/ApiResponse');
 const quotationService = require('../services/quotation.service');
 
 const createQuotation = catchAsync(async (req, res) => {
-  const quotation = await quotationService.createQuotation(req.body, req.user._id);
+  const quotation = await quotationService.createQuotation(req.organization._id, req.body, req.user._id);
   res.status(201).json(new ApiResponse(201, 'Quotation created successfully', quotation));
 });
 
@@ -21,32 +21,32 @@ const getQuotations = catchAsync(async (req, res) => {
     search: req.query.search
   };
 
-  const result = await quotationService.getQuotations(filter, options);
+  const result = await quotationService.getQuotations(req.organization._id, filter, options);
   res.status(200).json(new ApiResponse(200, 'Quotations retrieved successfully', result));
 });
 
 const getQuotationById = catchAsync(async (req, res) => {
-  const quotation = await quotationService.getQuotationById(req.params.id);
+  const quotation = await quotationService.getQuotationById(req.organization._id, req.params.id);
   res.status(200).json(new ApiResponse(200, 'Quotation retrieved successfully', quotation));
 });
 
 const updateQuotation = catchAsync(async (req, res) => {
-  const quotation = await quotationService.updateQuotation(req.params.id, req.body, req.user._id);
+  const quotation = await quotationService.updateQuotation(req.organization._id, req.params.id, req.body, req.user._id);
   res.status(200).json(new ApiResponse(200, 'Quotation updated successfully', quotation));
 });
 
 const reviewQuotation = catchAsync(async (req, res) => {
-  const quotation = await quotationService.reviewQuotation(req.params.id, req.body, req.user._id);
+  const quotation = await quotationService.reviewQuotation(req.organization._id, req.params.id, req.body, req.user._id);
   res.status(200).json(new ApiResponse(200, 'Quotation reviewed successfully', quotation));
 });
 
 const selectWinningQuotation = catchAsync(async (req, res) => {
-  const quotation = await quotationService.selectWinningQuotation(req.params.id, req.user._id);
+  const quotation = await quotationService.selectWinningQuotation(req.organization._id, req.params.id, req.user._id);
   res.status(200).json(new ApiResponse(200, 'Winning quotation selected successfully', quotation));
 });
 
 const deleteQuotation = catchAsync(async (req, res) => {
-  await quotationService.deleteQuotation(req.params.id, req.user._id);
+  await quotationService.deleteQuotation(req.organization._id, req.params.id, req.user._id);
   res.status(200).json(new ApiResponse(200, 'Quotation deleted successfully'));
 });
 

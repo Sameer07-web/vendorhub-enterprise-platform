@@ -1,5 +1,6 @@
-const ApprovalProcess = require('../../models/ApprovalProcess');
-const WorkflowRule = require('../../models/WorkflowRule');
+const ApprovalProcessRepository = require('../../repositories/ApprovalProcessRepository');
+const WorkflowRuleRepository = require('../../repositories/WorkflowRuleRepository');
+const PurchaseRequestRepository = require('../../repositories/PurchaseRequestRepository');
 const ruleEngine = require('./ruleEngine.service');
 const approverResolver = require('./approverResolver.service');
 const workflowQueue = require('../../queues/workflow.queue');
@@ -7,21 +8,19 @@ const emailService = require('../email.service');
 const notificationDispatcher = require('../notificationDispatcher');
 const eventBus = require('../automation/eventBus');
 const SYSTEM_EVENTS = require('../../constants/events');
+const TenantReferenceValidator = require('../../utils/TenantReferenceValidator');
 
 class WorkflowService {
   /**
    * Kick off a new workflow for an entity.
    */
-  async triggerWorkflow(entityId, entityType, contextData) {
-    const rule = await ruleEngine.findMatchingRule(entityType, contextData);
+  async triggerWorkflow(sessionOrOrgId, entityId, entityType, contextData) {
+    const rule = await ruleEngine.findMatchingRule(sessionOrOrgId, entityType, contextData);
     
     if (!rule) {
-      // Auto-approve if no rules match? Or require admin?
-      // For now, let's just return a standard "No rule found"
       throw new Error(`No workflow rule found for ${entityType}`);
     }
 
-    // Sort levels by sequence
     const levels = [...rule.levels].sort((a, b) => a.sequence - b.sequence);
     if (levels.length === 0) {
       throw new Error('Workflow rule has no approval levels defined');
@@ -32,7 +31,7 @@ class WorkflowService {
 
     const slaDeadline = new Date(Date.now() + firstLevel.slaHours * 60 * 60 * 1000);
 
-    const process = await ApprovalProcess.create({
+    const process = await ApprovalProcessRepository.create(sessionOrOrgId, {
       entityId,
       entityType,
       workflowRuleId: rule._id,
@@ -48,14 +47,13 @@ class WorkflowService {
       }]
     });
 
-    // Enqueue SLA Timers (50% Warning, 100% Breach)
-    await this.scheduleSlaTimer(process._id, firstLevel.sequence, firstLevel.slaHours);
-    
-    // Notify Approvers
-    await this.notifyApprovers(pendingApprovers, entityType, entityId);
+    const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
 
-    // Emit event for Automation Engine
+    await this.scheduleSlaTimer(process._id, firstLevel.sequence, firstLevel.slaHours);
+    await this.notifyApprovers(sessionOrOrgId, pendingApprovers, entityType, entityId);
+
     eventBus.emit(SYSTEM_EVENTS.WORKFLOW_STARTED, {
+      organizationId: orgId,
       approvalProcessId: process._id,
       entityId,
       entityType,
@@ -67,7 +65,6 @@ class WorkflowService {
   }
 
   async scheduleSlaTimer(approvalProcessId, sequence, slaHours) {
-    // 50% warning
     const warningDelay = (slaHours / 2) * 60 * 60 * 1000;
     await workflowQueue.add('sla-timer', {
       approvalProcessId,
@@ -78,7 +75,6 @@ class WorkflowService {
       jobId: `sla-warn-${approvalProcessId}-${sequence}`
     });
 
-    // 100% breach
     const breachDelay = slaHours * 60 * 60 * 1000;
     await workflowQueue.add('sla-timer', {
       approvalProcessId,
@@ -90,20 +86,21 @@ class WorkflowService {
     });
   }
 
-  async notifyApprovers(approvers, entityType, entityId) {
-    // We expect an array of User ObjectIds. We need their emails.
+  async notifyApprovers(sessionOrOrgId, approvers, entityType, entityId) {
     const User = require('../../models/User');
-    const users = await User.find({ _id: { $in: approvers } });
+    const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+    const users = await User.find({ organization: orgId, _id: { $in: approvers } });
     
     for (const u of users) {
       await emailService.sendGenericEmail(
         u,
         'Action Required: Approval Pending',
         `A new ${entityType} requires your review and approval.`,
-        `/app/workflows` // Generic link
+        `/app/workflows`
       );
       
       await notificationDispatcher.emitNotification(u._id, {
+        organization: orgId,
         type: 'APPROVAL_REQUIRED',
         title: 'Pending Approval',
         message: `You have a new ${entityType} awaiting your review.`
@@ -114,8 +111,10 @@ class WorkflowService {
   /**
    * Process an action on a workflow
    */
-  async processAction(processId, userId, action, comments) {
-    const process = await ApprovalProcess.findById(processId).populate('workflowRuleId');
+  async processAction(sessionOrOrgId, processId, userId, action, comments) {
+    const process = await ApprovalProcessRepository.findOne(sessionOrOrgId, { _id: processId }, null, {
+      populate: [{ path: 'workflowRuleId' }]
+    });
     if (!process) throw new Error('Approval process not found');
     if (process.status !== 'PENDING') throw new Error('Process is not pending');
     
@@ -140,16 +139,16 @@ class WorkflowService {
       });
       await process.save();
       
-      // Notify requester
       if (currentLevelObj.notifyRequester) {
-        // Find requester from SUBMITTED history
         const submitEvent = process.history.find(h => h.action === 'SUBMITTED');
         if (submitEvent && submitEvent.actorId) {
-           await notificationDispatcher.emitNotification(submitEvent.actorId, {
-             type: 'WORKFLOW_REJECTED',
-             title: 'Request Rejected',
-             message: `Your request was rejected: ${comments || 'No comments'}`
-           });
+          const orgId = sessionOrOrgId.organization ? sessionOrOrgId.organization : sessionOrOrgId._id ? sessionOrOrgId._id : sessionOrOrgId;
+          await notificationDispatcher.emitNotification(submitEvent.actorId, {
+            organization: orgId,
+            type: 'WORKFLOW_REJECTED',
+            title: 'Request Rejected',
+            message: `Your request was rejected: ${comments || 'No comments'}`
+          });
         }
       }
       return process;
@@ -163,30 +162,23 @@ class WorkflowService {
         comments
       });
 
-      // Emit Approved event for this stage
       eventBus.emit(SYSTEM_EVENTS.WORKFLOW_STAGE_APPROVED, {
         approvalProcessId: process._id,
         sequence: process.currentSequence
       });
 
-      // Find next level
       const sortedLevels = [...rule.levels].sort((a, b) => a.sequence - b.sequence);
       const currentIndex = sortedLevels.findIndex(l => l.sequence === process.currentSequence);
       const nextLevel = sortedLevels[currentIndex + 1];
 
       if (nextLevel) {
-        // Advance to next level
         process.currentSequence = nextLevel.sequence;
         process.currentStageStartedAt = new Date();
         process.slaDeadline = new Date(Date.now() + nextLevel.slaHours * 60 * 60 * 1000);
         
-        // We'd need contextData. We can pull it from the entity or pass it.
-        // For now, let's fetch basic context data (e.g. department of PR)
         let deptId = null;
         if (process.entityType === 'PurchaseRequest') {
-          const PurchaseRequest = require('../../models/PurchaseRequest');
-          const pr = await PurchaseRequest.findById(process.entityId);
-          // Assuming PR now has departmentId as we refactored
+          const pr = await PurchaseRequestRepository.findById(sessionOrOrgId, process.entityId);
           deptId = pr?.departmentId;
         }
 
@@ -194,9 +186,8 @@ class WorkflowService {
         process.pendingApprovers = nextApprovers;
         
         await this.scheduleSlaTimer(process._id, nextLevel.sequence, nextLevel.slaHours);
-        await this.notifyApprovers(nextApprovers, process.entityType, process.entityId);
+        await this.notifyApprovers(sessionOrOrgId, nextApprovers, process.entityType, process.entityId);
       } else {
-        // Finished
         process.status = 'APPROVED';
         process.completedAt = new Date();
         
@@ -215,10 +206,12 @@ class WorkflowService {
   }
 
   /**
-   * Process a system-triggered action (bypass regular isApprover checks)
+   * Process a system-triggered action
    */
-  async processSystemAction(processId, systemUserId, action, comments) {
-    const process = await ApprovalProcess.findById(processId).populate('workflowRuleId');
+  async processSystemAction(sessionOrOrgId, processId, systemUserId, action, comments) {
+    const process = await ApprovalProcessRepository.findOne(sessionOrOrgId, { _id: processId }, null, {
+      populate: [{ path: 'workflowRuleId' }]
+    });
     if (!process) throw new Error('Approval process not found');
     if (process.status !== 'PENDING') throw new Error('Process is not pending');
 
@@ -229,7 +222,7 @@ class WorkflowService {
       process.completedAt = new Date();
       process.history.push({
         sequence: process.currentSequence,
-        action: 'REJECTED', // could use SYSTEM_AUTO_REJECTED if added to enum
+        action: 'REJECTED',
         actorId: systemUserId,
         comments
       });
@@ -252,7 +245,6 @@ class WorkflowService {
         comments
       });
 
-      // Find next level logic identical to manual approval
       const sortedLevels = [...rule.levels].sort((a, b) => a.sequence - b.sequence);
       const currentIndex = sortedLevels.findIndex(l => l.sequence === process.currentSequence);
       const nextLevel = sortedLevels[currentIndex + 1];
@@ -264,8 +256,7 @@ class WorkflowService {
         
         let deptId = null;
         if (process.entityType === 'PurchaseRequest') {
-          const PurchaseRequest = require('../../models/PurchaseRequest');
-          const pr = await PurchaseRequest.findById(process.entityId);
+          const pr = await PurchaseRequestRepository.findById(sessionOrOrgId, process.entityId);
           deptId = pr?.departmentId;
         }
 
@@ -273,7 +264,7 @@ class WorkflowService {
         process.pendingApprovers = nextApprovers;
         
         await this.scheduleSlaTimer(process._id, nextLevel.sequence, nextLevel.slaHours);
-        await this.notifyApprovers(nextApprovers, process.entityType, process.entityId);
+        await this.notifyApprovers(sessionOrOrgId, nextApprovers, process.entityType, process.entityId);
       } else {
         process.status = 'APPROVED';
         process.completedAt = new Date();

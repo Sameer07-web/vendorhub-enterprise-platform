@@ -1,7 +1,21 @@
 const mongoose = require('mongoose');
 
+const quotationItemSchema = new mongoose.Schema({
+  rfqItemId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  unitPrice: { type: Number, required: true, min: 0 },
+  totalPrice: { type: Number, required: true, min: 0 },
+  leadTimeDays: { type: Number, required: true, min: 0 },
+  remarks: { type: String }
+});
+
 const quotationSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: true,
+      index: true
+    },
     quotationNumber: {
       type: String,
       unique: true,
@@ -116,12 +130,18 @@ const quotationSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    versionKey: false
+    optimisticConcurrency: true
   }
 );
 
-// Indexes for common queries
-quotationSchema.index({ rfq: 1, vendor: 1 }, { unique: true, partialFilterExpression: { isDeleted: false } });
+// Compound indexes for multi-tenant performance
+quotationSchema.index({ organization: 1, status: 1 });
+quotationSchema.index({ organization: 1, rfq: 1 });
+quotationSchema.index({ organization: 1, vendor: 1 });
+quotationSchema.index({ organization: 1, createdAt: -1 });
+
+// Indexes for queries
+quotationSchema.index({ rfq: 1, vendor: 1 }, { unique: true }); // One quote per vendor per RFQ
 quotationSchema.index({ status: 1 });
 quotationSchema.index({ quotationDate: -1 });
 

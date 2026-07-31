@@ -1,11 +1,12 @@
-const Quotation = require('../models/Quotation');
-const RFQ = require('../models/RFQ');
-const Vendor = require('../models/Vendor');
+const QuotationRepository = require('../repositories/QuotationRepository');
+const RFQRepository = require('../repositories/RFQRepository');
+const VendorRepository = require('../repositories/VendorRepository');
 const Counter = require('../models/Counter');
 const ApiError = require('../utils/ApiError');
 const escapeRegex = require('../utils/escapeRegex');
 const { logEvent } = require('./audit.service');
 const notificationService = require('./notification.service');
+const TenantReferenceValidator = require('../utils/TenantReferenceValidator');
 
 /**
  * Generate Next Quotation Number
@@ -29,24 +30,18 @@ const calculateTotal = (subtotal, taxAmount = 0, shippingCost = 0, discount = 0)
 /**
  * Create a new Quotation
  */
-const createQuotation = async (quotationBody, userId) => {
+const createQuotation = async (organizationId, quotationBody, userId) => {
   const { rfq, vendor, subtotal, taxAmount, shippingCost, discount, validUntil } = quotationBody;
 
-  // 1. Validate RFQ
-  const rfqDoc = await RFQ.findOne({ _id: rfq, isDeleted: false });
-  if (!rfqDoc) {
-    throw new ApiError(404, 'RFQ not found or has been deleted');
-  }
+  // 1. Validate RFQ reference & tenant isolation
+  const rfqDoc = await TenantReferenceValidator.validateRFQ(organizationId, rfq);
 
   if (!['SENT', 'PARTIALLY_RESPONDED'].includes(rfqDoc.status)) {
     throw new ApiError(400, `Quotation cannot be submitted. RFQ status is ${rfqDoc.status}`);
   }
 
-  // 2. Validate Vendor
-  const vendorDoc = await Vendor.findOne({ _id: vendor, isDeleted: false });
-  if (!vendorDoc) {
-    throw new ApiError(404, 'Vendor not found or has been deleted');
-  }
+  // 2. Validate Vendor reference & tenant isolation
+  const vendorDoc = await TenantReferenceValidator.validateVendor(organizationId, vendor);
 
   const isInvited = rfqDoc.vendors.some(vId => vId.toString() === vendor.toString());
   if (!isInvited) {
@@ -54,7 +49,7 @@ const createQuotation = async (quotationBody, userId) => {
   }
 
   // 3. Prevent Duplicate Quotations
-  const existingQuotation = await Quotation.findOne({ rfq, vendor, isDeleted: false });
+  const existingQuotation = await QuotationRepository.findOne(organizationId, { rfq, vendor, isDeleted: false });
   if (existingQuotation) {
     throw new ApiError(409, 'Vendor has already submitted a quotation for this RFQ');
   }
@@ -77,7 +72,7 @@ const createQuotation = async (quotationBody, userId) => {
   };
 
   // 7. Save Quotation
-  const quotation = await Quotation.create({
+  const quotation = await QuotationRepository.create(organizationId, {
     ...quotationBody,
     quotationNumber,
     vendorSnapshot,
@@ -103,20 +98,17 @@ const createQuotation = async (quotationBody, userId) => {
     });
   }
 
-  // Check if all responded -> do we close?
-  // User explicitly asked: "Do NOT automatically close unfinished procurement."
-  // Leave in PARTIALLY_RESPONDED even if pending === 0.
-
   await rfqDoc.save();
 
-  console.log(`[BUSINESS EVENT] Quotation Created: ${quotationNumber} for RFQ: ${rfqDoc.rfqNumber} by Vendor: ${vendorDoc.vendorCode}`);
+  console.log(`[BUSINESS EVENT] Quotation Created: ${quotationNumber} for RFQ: ${rfqDoc.rfqNumber} in Org: ${organizationId} by Vendor: ${vendorDoc.vendorCode}`);
 
   await logEvent({
+    organizationId,
     userId,
     action: "CREATE_QUOTATION",
     entityType: "Quotation",
     entityId: quotation._id,
-    newValue: quotation.toObject(),
+    newValue: quotation.toObject ? quotation.toObject() : quotation,
   });
 
   return quotation;
@@ -125,7 +117,7 @@ const createQuotation = async (quotationBody, userId) => {
 /**
  * Get Quotations with Pagination, Filtering, Sorting
  */
-const getQuotations = async (filter = {}, options = {}) => {
+const getQuotations = async (organizationId, filter = {}, options = {}) => {
   const { page = 1, limit = 10, sortBy = 'Newest', search } = options;
   const skip = (page - 1) * limit;
 
@@ -145,19 +137,22 @@ const getQuotations = async (filter = {}, options = {}) => {
   if (sortBy === 'Highest Price') sortOption = { totalAmount: -1 };
   if (sortBy === 'Delivery Days') sortOption = { deliveryDays: 1 };
 
-  const quotations = await Quotation.find(query)
-    .populate('rfq', 'rfqNumber title status')
-    .populate('vendor', 'vendorCode companyName')
-    .populate('createdBy', 'firstName lastName fullName email')
-    .sort(sortOption)
-    .skip(skip)
-    .limit(limit);
+  const quotations = await QuotationRepository.findMany(organizationId, query, null, {
+    sort: sortOption,
+    skip,
+    limit: parseInt(limit, 10),
+    populate: [
+      { path: 'rfq', select: 'rfqNumber title status' },
+      { path: 'vendor', select: 'vendorCode companyName' },
+      { path: 'createdBy', select: 'firstName lastName fullName email' }
+    ]
+  });
 
-  const total = await Quotation.countDocuments(query);
+  const total = await QuotationRepository.count(organizationId, query);
 
   return {
     quotations,
-    page: parseInt(page),
+    page: parseInt(page, 10),
     totalPages: Math.ceil(total / limit),
     total
   };
@@ -166,12 +161,15 @@ const getQuotations = async (filter = {}, options = {}) => {
 /**
  * Get Quotation By ID
  */
-const getQuotationById = async (id) => {
-  const quotation = await Quotation.findOne({ _id: id, isDeleted: false })
-    .populate('rfq', 'rfqNumber title status')
-    .populate('vendor', 'vendorCode companyName')
-    .populate('createdBy', 'firstName lastName fullName email')
-    .populate('reviewedBy', 'firstName lastName fullName email');
+const getQuotationById = async (organizationId, id) => {
+  const quotation = await QuotationRepository.findOne(organizationId, { _id: id, isDeleted: false }, null, {
+    populate: [
+      { path: 'rfq', select: 'rfqNumber title status' },
+      { path: 'vendor', select: 'vendorCode companyName' },
+      { path: 'createdBy', select: 'firstName lastName fullName email' },
+      { path: 'reviewedBy', select: 'firstName lastName fullName email' }
+    ]
+  });
 
   if (!quotation) {
     throw new ApiError(404, 'Quotation not found');
@@ -183,14 +181,13 @@ const getQuotationById = async (id) => {
 /**
  * Update Quotation
  */
-const updateQuotation = async (id, updateBody, userId) => {
-  const quotation = await getQuotationById(id);
+const updateQuotation = async (organizationId, id, updateBody, userId) => {
+  const quotation = await getQuotationById(organizationId, id);
 
   if (quotation.status !== 'SUBMITTED') {
     throw new ApiError(400, `Cannot update quotation with status ${quotation.status}`);
   }
 
-  // Recalculate totals if financial fields change
   const subtotal = updateBody.subtotal ?? quotation.subtotal;
   const taxAmount = updateBody.taxAmount ?? quotation.taxAmount;
   const shippingCost = updateBody.shippingCost ?? quotation.shippingCost;
@@ -202,19 +199,20 @@ const updateQuotation = async (id, updateBody, userId) => {
     throw new ApiError(400, 'validUntil cannot be before quotationDate');
   }
 
-  const oldVal = quotation.toObject();
+  const oldVal = quotation.toObject ? quotation.toObject() : quotation;
   Object.assign(quotation, updateBody);
   quotation.updatedBy = userId;
 
   await quotation.save();
 
   await logEvent({
+    organizationId,
     userId,
     action: "UPDATE_QUOTATION",
     entityType: "Quotation",
     entityId: id,
     oldValue: oldVal,
-    newValue: quotation.toObject(),
+    newValue: quotation.toObject ? quotation.toObject() : quotation,
   });
 
   return quotation;
@@ -223,8 +221,8 @@ const updateQuotation = async (id, updateBody, userId) => {
 /**
  * Review Quotation
  */
-const reviewQuotation = async (id, reviewBody, userId) => {
-  const quotation = await getQuotationById(id);
+const reviewQuotation = async (organizationId, id, reviewBody, userId) => {
+  const quotation = await getQuotationById(organizationId, id);
 
   if (!['SUBMITTED', 'UNDER_REVIEW'].includes(quotation.status)) {
     throw new ApiError(400, `Cannot review quotation with status ${quotation.status}`);
@@ -239,7 +237,7 @@ const reviewQuotation = async (id, reviewBody, userId) => {
 
   quotation.reviewedBy = userId;
   quotation.reviewedAt = new Date();
-  const oldVal = quotation.toObject();
+  const oldVal = quotation.toObject ? quotation.toObject() : quotation;
   quotation.updatedBy = userId;
 
   await quotation.save();
@@ -247,12 +245,13 @@ const reviewQuotation = async (id, reviewBody, userId) => {
   console.log(`[BUSINESS EVENT] Quotation Reviewed: ${quotation.quotationNumber}`);
 
   await logEvent({
+    organizationId,
     userId,
     action: "REVIEW_QUOTATION",
     entityType: "Quotation",
     entityId: id,
     oldValue: oldVal,
-    newValue: quotation.toObject(),
+    newValue: quotation.toObject ? quotation.toObject() : quotation,
   });
 
   return quotation;
@@ -261,8 +260,8 @@ const reviewQuotation = async (id, reviewBody, userId) => {
 /**
  * Select Winning Quotation
  */
-const selectWinningQuotation = async (id, userId) => {
-  const quotation = await getQuotationById(id);
+const selectWinningQuotation = async (organizationId, id, userId) => {
+  const quotation = await getQuotationById(organizationId, id);
 
   if (!['SUBMITTED', 'UNDER_REVIEW'].includes(quotation.status)) {
     throw new ApiError(400, `Cannot select quotation with status ${quotation.status}`);
@@ -270,21 +269,20 @@ const selectWinningQuotation = async (id, userId) => {
 
   const rfqId = quotation.rfq._id || quotation.rfq;
 
-  // Check if there is already a winner for this RFQ
-  const existingWinner = await Quotation.findOne({ rfq: rfqId, isWinner: true, isDeleted: false });
+  const existingWinner = await QuotationRepository.findOne(organizationId, { rfq: rfqId, isWinner: true, isDeleted: false });
   if (existingWinner) {
     throw new ApiError(409, `A winning quotation (${existingWinner.quotationNumber}) has already been selected for this RFQ`);
   }
 
-  const oldVal = quotation.toObject();
-  // Set as Winner
+  const oldVal = quotation.toObject ? quotation.toObject() : quotation;
   quotation.isWinner = true;
   quotation.status = 'SELECTED';
   quotation.updatedBy = userId;
   await quotation.save();
 
-  // Bulk reject remaining
-  await Quotation.updateMany(
+  // Bulk reject remaining within tenant
+  await QuotationRepository.updateMany(
+    organizationId,
     { rfq: rfqId, _id: { $ne: quotation._id }, isDeleted: false },
     { $set: { status: 'REJECTED', updatedBy: userId } }
   );
@@ -292,17 +290,17 @@ const selectWinningQuotation = async (id, userId) => {
   console.log(`[BUSINESS EVENT] Quotation Selected: ${quotation.quotationNumber} for RFQ ${rfqId}`);
 
   await logEvent({
+    organizationId,
     userId,
-    action: "AWARD_RFQ", // Matching the action requested: award RFQ
+    action: "AWARD_RFQ",
     entityType: "Quotation",
     entityId: quotation._id,
     oldValue: oldVal,
-    newValue: quotation.toObject(),
+    newValue: quotation.toObject ? quotation.toObject() : quotation,
   });
 
-  // Notify RFQ Creator that a vendor was awarded
   if (quotation.rfq.createdBy && quotation.rfq.createdBy.toString() !== userId.toString()) {
-    await notificationService.createNotification({
+    await notificationService.createNotification(organizationId, {
       recipient: quotation.rfq.createdBy,
       sender: userId,
       type: "RFQ_AWARDED",
@@ -325,20 +323,19 @@ const selectWinningQuotation = async (id, userId) => {
 /**
  * Soft Delete Quotation
  */
-const deleteQuotation = async (id, userId) => {
-  const quotation = await getQuotationById(id);
+const deleteQuotation = async (organizationId, id, userId) => {
+  const quotation = await getQuotationById(organizationId, id);
 
   if (quotation.status === 'SELECTED') {
     throw new ApiError(400, 'Cannot delete a winning quotation');
   }
 
-  const oldVal = quotation.toObject();
+  const oldVal = quotation.toObject ? quotation.toObject() : quotation;
   quotation.isDeleted = true;
   quotation.updatedBy = userId;
   await quotation.save();
 
-  // Decrement RFQ counters
-  const rfqDoc = await RFQ.findById(quotation.rfq._id || quotation.rfq);
+  const rfqDoc = await RFQRepository.findOne(organizationId, { _id: quotation.rfq._id || quotation.rfq });
   if (rfqDoc && rfqDoc.vendorResponses) {
     rfqDoc.quotationCount = Math.max(0, rfqDoc.quotationCount - 1);
     rfqDoc.vendorResponses.responded = Math.max(0, rfqDoc.vendorResponses.responded - 1);
@@ -349,6 +346,7 @@ const deleteQuotation = async (id, userId) => {
   console.log(`[BUSINESS EVENT] Quotation Deleted: ${quotation.quotationNumber}`);
 
   await logEvent({
+    organizationId,
     userId,
     action: "DELETE_QUOTATION",
     entityType: "Quotation",

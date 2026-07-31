@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const aiDocumentExtractionSchema = new mongoose.Schema(
   {
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: true,
+      index: true
+    },
     documentType: {
       type: String,
       enum: ['Quotation', 'Invoice', 'PurchaseOrder', 'ComplianceCertificate'],
@@ -45,10 +51,12 @@ const aiDocumentExtractionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    versionKey: false
+    optimisticConcurrency: true
   }
 );
 
+aiDocumentExtractionSchema.index({ organization: 1, extractedBy: 1 });
+aiDocumentExtractionSchema.index({ organization: 1, createdAt: -1 });
 aiDocumentExtractionSchema.index({ documentType: 1 });
 aiDocumentExtractionSchema.index({ extractedBy: 1 });
 aiDocumentExtractionSchema.index({ createdAt: -1 });

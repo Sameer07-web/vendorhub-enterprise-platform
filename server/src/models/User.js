@@ -29,6 +29,22 @@ const userSchema = new mongoose.Schema(
       default: "Employee",
     },
 
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      // We make it not required at the mongoose level temporarily to avoid breaking existing seeding/migrations if any run, but in practice it's required for normal users.
+    },
+    
+    organizationRole: {
+      type: String,
+      enum: ["Owner", "Admin", "Manager", "Employee", "Viewer"],
+    },
+
+    tenantVersion: {
+      type: Number,
+      default: 1
+    },
+
     department: {
       type: String,
       trim: true,
@@ -71,6 +87,8 @@ const userSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+userSchema.index({ organization: 1 });
 
 const User = mongoose.model("User", userSchema);
 
